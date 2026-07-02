@@ -1,0 +1,128 @@
+version: "3.8"
+
+# =============================================================================
+# PetCare 宠物在线问诊系统 — Docker Compose 编排
+# =============================================================================
+# 启动:  docker compose up -d
+# 停止:  docker compose down
+# 重建:  docker compose up -d --build
+# 查看:  docker compose ps
+# 日志:  docker compose logs -f
+# =============================================================================
+
+services:
+  # ===== MySQL 8.0 =====
+  mysql:
+    image: mysql:8.0
+    container_name: petcare-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123}
+      MYSQL_DATABASE: ${DB_NAME:-petcare}
+      MYSQL_USER: ${DB_USERNAME:-petcare}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-petcare123}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - petcare-net
+
+  # ===== Redis 7 =====
+  redis:
+    image: redis:7-alpine
+    container_name: petcare-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-me-redis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - petcare-net
+
+  # ===== Spring Boot 后端 =====
+  server:
+    build:
+      context: ./petcare-server
+      dockerfile: Dockerfile
+    image: petcare-server:latest
+    container_name: petcare-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-petcare}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=true&requireSSL=true
+      DB_USERNAME: ${DB_USERNAME:-petcare}
+      DB_PASSWORD: ${DB_PASSWORD:-petcare123}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me-redis}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string-at-least-32-chars}
+      AES_KEY: ${AES_KEY:-change-me-to-a-random-base64-string-at-least-32-chars}
+      LLM_API_URL: ${LLM_API_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - petcare-net
+
+  # ===== 管理后台前端 (Vue + Element Plus) =====
+  admin:
+    build:
+      context: ./petcare-admin
+      dockerfile: Dockerfile
+    image: petcare-admin:latest
+    container_name: petcare-admin
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "${ADMIN_PORT:-8081}:80"
+    networks:
+      - petcare-net
+
+  # ===== 用户端前端 (Vue + Element Plus) =====
+  web:
+    build:
+      context: ./petcare-web
+      dockerfile: Dockerfile
+    image: petcare-web:latest
+    container_name: petcare-web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "${WEB_PORT:-8082}:80"
+    networks:
+      - petcare-net
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  petcare-net:
+    driver: bridge

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petcare.system.mapper.DoctorMapper">
+
+    <!-- 分页查询已启用医生列表，联表user+department -->
+    <select id="selectDoctorPage" resultType="com.petcare.system.dto.DoctorListItemDTO">
+        SELECT
+            d.id,
+            d.user_id AS userId,
+            u.real_name AS realName,
+            u.avatar,
+            u.phone,
+            d.department_id AS departmentId,
+            dept.name AS departmentName,
+            d.title,
+            d.specialty,
+            d.experience,
+            d.hospital,
+            d.consultation_fee AS consultationFee,
+            d.rating,
+            d.consultation_count AS consultationCount,
+            d.introduction
+        FROM doctor d
+        INNER JOIN user u ON d.user_id = u.id AND u.deleted = 0 AND u.status = 1
+        LEFT JOIN department dept ON d.department_id = dept.id AND dept.deleted = 0
+        WHERE d.deleted = 0
+          AND d.status = 1
+        <if test="deptId != null">
+          AND d.department_id = #{deptId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+          AND (
+              u.real_name LIKE CONCAT('%', #{keyword}, '%')
+              OR d.specialty LIKE CONCAT('%', #{keyword}, '%')
+              OR d.hospital LIKE CONCAT('%', #{keyword}, '%')
+              OR d.title LIKE CONCAT('%', #{keyword}, '%')
+          )
+        </if>
+        ORDER BY d.rating DESC, d.consultation_count DESC
+    </select>
+
+    <!-- 查询医生详情（含最近5条已显示评价） -->
+    <select id="selectDoctorDetail" resultType="com.petcare.system.dto.DoctorDetailDTO">
+        SELECT
+            d.id,
+            d.user_id AS userId,
+            u.real_name AS realName,
+            u.avatar,
+            u.phone,
+            d.department_id AS departmentId,
+            dept.name AS departmentName,
+            d.title,
+            d.specialty,
+            d.experience,
+            d.education,
+            d.hospital,
+            d.introduction,
+            d.consultation_fee AS consultationFee,
+            d.rating,
+            d.consultation_count AS consultationCount
+        FROM doctor d
+        INNER JOIN user u ON d.user_id = u.id AND u.deleted = 0 AND u.status = 1
+        LEFT JOIN department dept ON d.department_id = dept.id AND dept.deleted = 0
+        WHERE d.id = #{doctorId}
+          AND d.deleted = 0
+          AND d.status = 1
+    </select>
+
+    <!-- 分页查询待审核医生 -->
+    <select id="selectPendingPage" resultType="com.petcare.system.dto.DoctorPendingDTO">
+        SELECT
+            d.id,
+            d.user_id AS userId,
+            u.real_name AS realName,
+            u.phone,
+            u.avatar,
+            d.department_id AS departmentId,
+            dept.name AS departmentName,
+            d.title,
+            d.specialty,
+            d.experience,
+            d.education,
+            d.hospital,
+            d.introduction,
+            d.consultation_fee AS consultationFee,
+            d.status,
+            CASE d.status
+                WHEN 0 THEN '待审核'
+                WHEN 1 THEN '正常'
+                WHEN 2 THEN '禁用'
+                WHEN 3 THEN '已拒绝'
+                ELSE '未知'
+            END AS statusName,
+            d.create_time AS createTime
+        FROM doctor d
+        INNER JOIN user u ON d.user_id = u.id AND u.deleted = 0
+        LEFT JOIN department dept ON d.department_id = dept.id AND dept.deleted = 0
+        WHERE d.deleted = 0
+          AND d.status = 0
+        ORDER BY d.create_time ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,199 @@
+# =============================================================================
+# PetCare CI/CD Pipeline
+# =============================================================================
+# 触发条件: push 到 master/main 分支，或 PR 到 master/main
+# 工作流: 后端 Maven 构建+测试 → 前端 npm 构建 → Docker 镜像构建
+# =============================================================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+
+jobs:
+  # ===================== 后端构建 + 测试 =====================
+  backend:
+    name: Backend — Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: petcare-server
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_pass
+          MYSQL_DATABASE: petcare_test
+          MYSQL_USER: petcare_test
+          MYSQL_PASSWORD: test_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+        env:
+          DB_URL: jdbc:mysql://localhost:3306/petcare_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+          DB_USERNAME: petcare_test
+          DB_PASSWORD: test_pass
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ''
+          JWT_SECRET: test-jwt-secret-key-for-ci-pipeline-at-least-32-bytes
+          AES_KEY: dGVzdC1hZXMta2V5LWZvci1jaS1waXBlbGluZS10ZXN0LW9ubHk=
+
+      - name: Run Tests
+        run: mvn test
+        env:
+          DB_URL: jdbc:mysql://localhost:3306/petcare_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+          DB_USERNAME: petcare_test
+          DB_PASSWORD: test_pass
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ''
+          JWT_SECRET: test-jwt-secret-key-for-ci-pipeline-at-least-32-bytes
+          AES_KEY: dGVzdC1hZXMta2V5LWZvci1jaS1waXBlbGluZS10ZXN0LW9ubHk=
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: petcare-server/**/target/surefire-reports/*.xml
+
+  # ===================== 前端 Web 构建 =====================
+  frontend-web:
+    name: Frontend Web — Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: petcare-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: petcare-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type Check
+        run: npx vue-tsc --noEmit
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  # ===================== 前端 Admin 构建 =====================
+  frontend-admin:
+    name: Frontend Admin — Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: petcare-admin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: petcare-admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type Check
+        run: npx vue-tsc --noEmit
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  # ===================== Docker 镜像构建（仅在 master/main push 时） =====================
+  docker:
+    name: Docker — Build Images
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-web, frontend-admin]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./petcare-server
+          push: false
+          tags: petcare-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./petcare-web
+          push: false
+          tags: petcare-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build admin image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./petcare-admin
+          push: false
+          tags: petcare-admin:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -106,13 +106,21 @@ const total = ref(0)
 const detailDialog = ref(false)
 const currentDoctor = ref<Doctor | null>(null)
 
-const departments = [
-  { id: 1, name: '内科' }, { id: 2, name: '外科' }, { id: 3, name: '皮肤科' },
-  { id: 4, name: '眼科' }, { id: 5, name: '口腔科' }, { id: 6, name: '营养科' },
-  { id: 7, name: '行为学' }, { id: 8, name: '急诊科' },
-]
+const departments = ref<{ id: number; name: string }[]>([])
 
-onMounted(() => fetchList())
+onMounted(() => { fetchDepartments(); fetchList() })
+
+async function fetchDepartments() {
+  try {
+    const { default: api } = await import('@/api/department')
+    const { data } = await api.getDepartments()
+    if (data.code === 200) {
+      departments.value = data.data || []
+    }
+  } catch {
+    console.warn('科室列表加载失败')
+  }
+}
 
 function onSizeChange(s: number) { size.value = s; fetchList() }
 

@@ -1,9 +1,12 @@
 # ===== Stage 1: Node 构建 =====
 FROM node:20-alpine AS builder
 
+# NPM 镜像源（可通过 --build-arg NPM_REGISTRY=... 自定义）
+ARG NPM_REGISTRY=https://registry.npmjs.org
+
 WORKDIR /app
 COPY package.json ./
-RUN npm install --registry=https://registry.npmmirror.com
+RUN npm install --registry=${NPM_REGISTRY}
 
 COPY tsconfig*.json vite.config.ts index.html env.d.ts ./
 COPY src/ src/

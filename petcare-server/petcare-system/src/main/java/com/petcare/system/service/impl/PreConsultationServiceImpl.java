@@ -21,8 +21,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
@@ -258,8 +262,20 @@ public class PreConsultationServiceImpl implements PreConsultationService {
     }
 
     /**
-     * 调用LLM API（OpenAI兼容接口）
+     * 调用LLM API（OpenAI兼容接口）。
+     * <p>
+     * 使用 Spring Retry 实现自动重试（最多2次），配合 RestClientConfig 的超时配置。
+     * 超时/网络异常自动重试；4xx 客户端错误不重试（参数错误重试无意义）。
+     *
+     * @throws RuntimeException 所有重试耗尽后抛出
      */
+    @Retryable(
+            retryFor = {ResourceAccessException.class, RuntimeException.class},
+            noRetryFor = {BusinessException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2.0, maxDelay = 8000),
+            label = "llm-api-call"
+    )
     private String callLLM(String prompt) {
         RestClient restClient = RestClient.builder()
                 .baseUrl(llmApiUrl)
@@ -277,13 +293,30 @@ public class PreConsultationServiceImpl implements PreConsultationService {
                 "max_tokens", 1000
         );
 
+        log.info("调用LLM API: model={}, url={}", llmModel, llmApiUrl);
         String response = restClient.post()
                 .body(requestBody)
                 .retrieve()
+                .onStatus(status -> status.value() >= 500, (req, resp) -> {
+                    throw new RuntimeException("LLM API 服务器错误: HTTP " + resp.getStatusCode());
+                })
+                .onStatus(status -> status.value() == 429, (req, resp) -> {
+                    throw new RuntimeException("LLM API 限流 (429)，将自动重试");
+                })
                 .body(String.class);
 
         log.debug("LLM原始响应: {}", response);
         return response;
+    }
+
+    /**
+     * 重试耗尽后的兜底处理。
+     */
+    @Recover
+    private String callLLMFallback(RuntimeException e, String prompt) {
+        log.error("LLM API调用全部重试失败 (maxAttempts=3)", e);
+        throw BusinessException.badRequest(
+                "AI分析服务暂时不可用，请稍后重试。如需紧急帮助请联系客服。");
     }
 
     /**

@@ -125,12 +125,22 @@ const auditComment = ref('')
 const submitting = ref(false)
 const currentDoctor = ref<Doctor | null>(null)
 
-const departments = [
-  { id: 1, name: '内科' }, { id: 2, name: '外科' }, { id: 3, name: '皮肤科' },
-  { id: 4, name: '眼科' }, { id: 5, name: '口腔科' }, { id: 6, name: '营养科' },
-]
+const departments = ref<{ id: number; name: string }[]>([])
 
-onMounted(() => fetchList())
+onMounted(() => { fetchDepartments(); fetchList() })
+
+async function fetchDepartments() {
+  try {
+    const { default: api } = await import('@/api/department')
+    const { data } = await api.getDepartments()
+    if (data.code === 200) {
+      departments.value = data.data || []
+    }
+  } catch {
+    // 降级: 加载失败不影响列表页使用
+    console.warn('科室列表加载失败')
+  }
+}
 
 async function fetchList() {
   loading.value = true

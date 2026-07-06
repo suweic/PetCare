@@ -72,12 +72,19 @@ public class FileUploadController {
 
     /**
      * 上传资质证书（医生资格证、执业证）。
-     * <p>Authentication 参数预留给后续权限校验使用（如：仅医生可上传证书）。</p>
+     * <p>仅医生和管理员可上传资质证书，普通用户无权限。</p>
      */
     @PostMapping("/certificate")
     public ResponseEntity<Result<Map<String, String>>> uploadCertificate(
-            @SuppressWarnings("unused") Authentication authentication,
+            Authentication authentication,
             @RequestParam("file") MultipartFile file) {
+        // 权限校验：仅医生和管理员可上传资质证书
+        if (authentication == null || authentication.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_DOCTOR")
+                        || a.getAuthority().equals("ROLE_ADMIN"))) {
+            return ResponseEntity.status(403)
+                    .body(Result.error("无权上传资质证书，仅医生或管理员可操作"));
+        }
         return doUpload(file, ALLOWED_DOC_TYPES, "certificates");
     }
 
@@ -130,16 +137,22 @@ public class FileUploadController {
 
             if (bytesRead > 0) {
                 boolean magicMatch = false;
+                String detectedType = null;
                 for (Map.Entry<String, byte[]> entry : MAGIC_BYTES.entrySet()) {
                     byte[] signature = entry.getValue();
                     if (bytesRead >= signature.length && startsWith(magicBytes, signature)) {
                         magicMatch = true;
-                        // 魔数匹配的类型必须与声明的 Content-Type 对应
-                        if (!contentType.equals(entry.getKey())
-                                && !(contentType.equals("image/jpeg") && entry.getKey().equals("image/jpeg"))) {
-                            // 允许 image/jpeg 和 image/jpg 等同
-                        }
+                        detectedType = entry.getKey();
                         break;
+                    }
+                }
+                // 魔数匹配的类型必须与声明的 Content-Type 一致
+                if (magicMatch) {
+                    if (!contentType.equals(detectedType)) {
+                        log.warn("文件类型不匹配: claimed={}, actual={}, originalName={}",
+                                contentType, detectedType, originalName);
+                        return ResponseEntity.badRequest()
+                                .body(Result.badRequest("文件内容与声明的类型不匹配，上传被拒绝"));
                     }
                 }
                 if (!magicMatch) {

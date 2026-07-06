@@ -4,13 +4,13 @@
 <mapper namespace="com.petcare.system.mapper.DoctorMapper">
 
     <!-- 分页查询已启用医生列表，联表user+department -->
+    <!-- ⚠️ 安全：此接口为公开访问（permitAll），不返回手机号等敏感字段 -->
     <select id="selectDoctorPage" resultType="com.petcare.system.dto.DoctorListItemDTO">
         SELECT
             d.id,
             d.user_id AS userId,
             u.real_name AS realName,
             u.avatar,
-            u.phone,
             d.department_id AS departmentId,
             dept.name AS departmentName,
             d.title,

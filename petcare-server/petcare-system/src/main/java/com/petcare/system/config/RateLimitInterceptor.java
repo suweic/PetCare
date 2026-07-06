@@ -74,16 +74,28 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     /**
      * 获取客户端真实 IP。
      * <p>
-     * 注意：如果应用部署在反向代理（Nginx/Ingress）后面，需要在代理层配置
-     * 可信代理。当前默认使用 remoteAddr 作为安全底限，避免 X-Forwarded-For 伪造。
-     * 生产环境若需支持代理，应将代理 IP 加入可信列表后再读取 X-Forwarded-For。
+     * 部署在反向代理（Nginx/Ingress）后面时，remoteAddr 可能为代理容器 IP。
+     * Spring Boot 已配置 {@code server.forward-headers-strategy=native}，
+     * Tomcat RemoteIpValve 会自动从 X-Forwarded-For / X-Real-IP 解析真实 IP。
+     * 此处仍保留 X-Forwarded-For 回退逻辑作为双重保障。
      * </p>
      */
     private String getClientIp(HttpServletRequest request) {
-        // 优先使用 remoteAddr（无法伪造），适用于非代理环境
+        // 优先使用 Tomcat RemoteIpValve 解析后的 remoteAddr
         String remoteAddr = request.getRemoteAddr();
         if (remoteAddr != null && !remoteAddr.isEmpty()) {
             return remoteAddr;
+        }
+        // 回退：手动检查代理头（当 Tomcat 未配置 RemoteIpValve 时）
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isEmpty()) {
+            // X-Forwarded-For 格式: client, proxy1, proxy2, ...
+            // 取第一个 IP 即为真实客户端 IP
+            return forwardedFor.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isEmpty()) {
+            return realIp;
         }
         return "0.0.0.0";
     }

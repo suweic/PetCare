@@ -1,5 +1,8 @@
 server:
   port: 8080
+  # 信任反向代理（Nginx/Docker），从 X-Forwarded-For / X-Real-IP 解析真实客户端 IP
+  # 用于限流、审计日志等场景，避免所有请求被识别为 nginx 容器 IP
+  forward-headers-strategy: native
   servlet:
     encoding:
       charset: UTF-8
@@ -81,7 +84,7 @@ springdoc:
   default-flat-param-object: true
 
 knife4j:
-  enable: true
+  enable: false  # 默认关闭，仅 dev 环境显式开启
   setting:
     language: zh_cn
     enable-swagger-models: true

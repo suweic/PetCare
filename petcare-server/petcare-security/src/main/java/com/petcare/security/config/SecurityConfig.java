@@ -75,6 +75,16 @@ public class SecurityConfig {
                         .contentTypeOptions(cfg -> {})       // X-Content-Type-Options: nosniff
                         .frameOptions(cfg -> cfg.deny())     // X-Frame-Options: DENY (防点击劫持)
                         .xssProtection(cfg -> cfg.disable())  // 禁用旧版XSS过滤器，依赖CSP
+                        // Content-Security-Policy: 防止XSS的最后一道防线
+                        // 禁止内联脚本/style，限制资源加载源，frame-ancestors 'none' 防止点击劫持
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                + "script-src 'self'; "
+                                + "style-src 'self' 'unsafe-inline'; "
+                                + "img-src 'self' data: blob:; "
+                                + "connect-src 'self'; "
+                                + "frame-ancestors 'none'"
+                        ))
                 );
 
         return http.build();
@@ -97,6 +107,15 @@ public class SecurityConfig {
                         .contentTypeOptions(cfg -> {})
                         .frameOptions(cfg -> cfg.deny())
                         .xssProtection(cfg -> cfg.disable())
+                        // Content-Security-Policy: 管理后台安全策略
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                + "script-src 'self'; "
+                                + "style-src 'self' 'unsafe-inline'; "
+                                + "img-src 'self' data: blob:; "
+                                + "connect-src 'self'; "
+                                + "frame-ancestors 'none'"
+                        ))
                 );
 
         return http.build();

@@ -95,8 +95,9 @@ class DoctorServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：统一错误消息防止账号枚举攻击
         BusinessException exception = assertThrows(BusinessException.class, () -> doctorService.login(dto));
-        assertEquals("医生不存在", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test
@@ -109,8 +110,9 @@ class DoctorServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：禁用账号也返回统一错误消息
         BusinessException exception = assertThrows(BusinessException.class, () -> doctorService.login(dto));
-        assertEquals("账号已禁用", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test
@@ -124,8 +126,9 @@ class DoctorServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：医生资料不存在也返回统一错误消息
         BusinessException exception = assertThrows(BusinessException.class, () -> doctorService.login(dto));
-        assertEquals("医生资料未完善", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test
@@ -141,8 +144,9 @@ class DoctorServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：待审核医生也返回统一错误消息
         BusinessException exception = assertThrows(BusinessException.class, () -> doctorService.login(dto));
-        assertEquals("医生账号正在审核中", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test
@@ -158,8 +162,9 @@ class DoctorServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：审核未通过医生也返回统一错误消息
         BusinessException exception = assertThrows(BusinessException.class, () -> doctorService.login(dto));
-        assertEquals("医生账号审核未通过", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test

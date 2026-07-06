@@ -1,6 +1,7 @@
 package com.petcare.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petcare.security.service.TokenBlacklistService;
 import com.petcare.security.util.JwtUtils;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -18,7 +19,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +30,7 @@ import java.util.Map;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+    private final TokenBlacklistService tokenBlacklistService;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -40,6 +41,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token)) {
             if (!jwtUtils.validateToken(token)) {
                 sendUnauthorizedResponse(response, "Token无效或已过期");
+                return;
+            }
+
+            // 黑名单检查：已登出的 Token 拒绝使用
+            try {
+                String jti = jwtUtils.getTokenId(token);
+                if (jti != null && tokenBlacklistService.isBlacklisted(jti)) {
+                    log.warn("Token 已被撤销（黑名单中）: jti={}", jti);
+                    sendUnauthorizedResponse(response, "Token已被撤销，请重新登录");
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("Token 黑名单检查失败: {}", e.getMessage());
+                sendUnauthorizedResponse(response, "认证失败");
                 return;
             }
 

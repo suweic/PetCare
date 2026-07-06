@@ -71,7 +71,7 @@ public class UserServiceImpl implements UserService {
         result.setToken(token);
         result.setUser(UserConverter.INSTANCE.toUserInfoDTO(user));
 
-        log.info("用户登录成功: userId={}, phone={}", user.getId(), user.getPhone());
+        log.info("用户登录成功: userId={}, phone={}", user.getId(), maskPhone(user.getPhone()));
         return result;
     }
 
@@ -97,7 +97,7 @@ public class UserServiceImpl implements UserService {
         } catch (DuplicateKeyException e) {
             throw BusinessException.badRequest("手机号已注册，请直接登录");
         }
-        log.info("用户注册成功: userId={}, phone={}", user.getId(), user.getPhone());
+        log.info("用户注册成功: userId={}, phone={}", user.getId(), maskPhone(user.getPhone()));
 
         return UserConverter.INSTANCE.toUserInfoDTO(user);
     }
@@ -145,7 +145,7 @@ public class UserServiceImpl implements UserService {
         result.setToken(token);
         result.setUser(UserConverter.INSTANCE.toUserInfoDTO(user));
 
-        log.info("验证码登录成功: userId={}, phone={}", user.getId(), user.getPhone());
+        log.info("验证码登录成功: userId={}, phone={}", user.getId(), maskPhone(user.getPhone()));
         return result;
     }
 
@@ -170,7 +170,7 @@ public class UserServiceImpl implements UserService {
         user.setStatus(UserStatus.ENABLED.getCode());
 
         userMapper.insert(user);
-        log.info("验证码登录自动注册: userId={}, phone={}", user.getId(), phone);
+        log.info("验证码登录自动注册: userId={}, phone={}", user.getId(), maskPhone(phone));
         return user;
     }
 
@@ -184,5 +184,16 @@ public class UserServiceImpl implements UserService {
         }
         int len = phone.length();
         return len > 4 ? phone.substring(len - 4) : phone;
+    }
+
+    /**
+     * 手机号脱敏：保留前3位和后4位，中间用****替换。
+     * 示例：13812345678 → 138****5678
+     */
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return "***";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

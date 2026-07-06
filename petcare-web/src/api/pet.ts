@@ -3,7 +3,7 @@ import type { ApiResult, PageData, Pet } from '@/types'
 
 /** 获取宠物列表 */
 export function getPetList(params?: { page?: number; size?: number }) {
-  return request.get<ApiResult<PageData<Pet>>>('/pet/list', { params })
+  return request.get<ApiResult<PageData<Pet>>>('/pet', { params })
 }
 
 /** 获取宠物详情 */
@@ -24,7 +24,7 @@ export function createPet(data: {
   allergyInfo?: string
   sterilized?: number
 }) {
-  return request.post<ApiResult<Pet>>('/pet/create', data)
+  return request.post<ApiResult<Pet>>('/pet', data)
 }
 
 /** 更新宠物 */

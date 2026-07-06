@@ -1,0 +1,50 @@
+# PetCare — 根级别 .dockerignore
+# 在构建 Docker 镜像时排除不需要的文件，减小构建上下文大小
+
+# 环境变量（含密钥）
+.env
+.env.local
+
+# 演示种子数据（含测试账号密码）
+init-seed.sql
+
+# 依赖
+node_modules/
+target/
+*.jar
+*.war
+
+# 构建产物
+dist/
+build/
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
+
+# 文档与报告（不需要打包进镜像）
+*.md
+!README.md
+PetCare_Code_Review_Report.txt
+petcare_schema.sql
+init.sql
+
+# GitHub CI
+.github/

@@ -161,6 +161,21 @@ public class EvaluationServiceImpl implements EvaluationService {
     }
 
     private EvaluationDTO toEvaluationDTO(Evaluation evaluation) {
+        // 单条转换（向后兼容）：按需查询用户信息
+        return toEvaluationDTO(evaluation, null);
+    }
+
+    /**
+     * 将评价实体转换为DTO。
+     * <p>
+     * 单条场景（create/reply）可传 null 作为 userMap，内部按需查询。
+     * 批量场景应预加载所有 userId → User 映射后传入，避免 N+1 查询。
+     *
+     * @param evaluation 评价实体
+     * @param userMap    预加载的用户ID→用户实体映射（可为 null，内部按需查询）
+     */
+    private EvaluationDTO toEvaluationDTO(Evaluation evaluation,
+                                          java.util.Map<Long, User> userMap) {
         EvaluationDTO dto = new EvaluationDTO();
         dto.setId(evaluation.getId());
         dto.setConsultationId(evaluation.getConsultationId());
@@ -174,13 +189,19 @@ public class EvaluationServiceImpl implements EvaluationService {
         dto.setStatus(evaluation.getStatus());
         dto.setCreateTime(evaluation.getCreateTime());
 
-        // 填充用户信息
+        // 填充用户信息：优先从批量预加载Map获取，否则按需查询
         if (evaluation.getUserId() != null) {
-            User user = userMapper.selectById(evaluation.getUserId());
+            User user = userMap != null
+                    ? userMap.get(evaluation.getUserId())
+                    : userMapper.selectById(evaluation.getUserId());
+
+            boolean anonymous = evaluation.getIsAnonymous() != null
+                    && evaluation.getIsAnonymous() == 1;
             if (user != null) {
-                boolean anonymous = evaluation.getIsAnonymous() != null && evaluation.getIsAnonymous() == 1;
                 dto.setUserName(anonymous ? "匿名用户" : user.getNickname());
                 dto.setUserAvatar(anonymous ? null : user.getAvatar());
+            } else {
+                dto.setUserName(anonymous ? "匿名用户" : "用户" + evaluation.getUserId());
             }
         }
 

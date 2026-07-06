@@ -61,9 +61,11 @@ describe('Auth Utils', () => {
     })
 
     it('should handle malformed JSON gracefully', () => {
-      // Simulate corrupted data
+      // Simulate corrupted data — save and restore original getItem to avoid polluting other tests
+      const originalGetItem = localStorageMock.getItem
       localStorageMock.getItem = vi.fn(() => '{broken-json')
       expect(getUser()).toBeNull()
+      localStorageMock.getItem = originalGetItem
     })
 
     it('should remove user', () => {

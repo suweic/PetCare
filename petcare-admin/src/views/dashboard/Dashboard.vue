@@ -11,7 +11,7 @@
         <div class="stat-card card-blue">
           <div class="stat-left">
             <div class="stat-value">
-              <span ref="countUsersRef">{{ displayUsers }}</span>
+              <span>{{ displayUsers }}</span>
             </div>
             <div class="stat-label">总用户数</div>
             <div class="stat-sub">今日新增 +{{ stats.todayNewUsers ?? 0 }}</div>
@@ -101,7 +101,7 @@
           </div>
           <div class="log-list">
             <div v-for="(log, i) in recentLogs" :key="i" class="log-item">
-              <el-tag :type="log.type" size="small">{{ log.tag }}</el-tag>
+              <el-tag :type="log.type || 'info'" size="small">{{ log.tag }}</el-tag>
               <span class="log-msg">{{ log.msg }}</span>
               <span class="log-time">{{ log.time }}</span>
             </div>

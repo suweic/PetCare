@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 /**
  * 处方服务实现。
  *
- * TODO: 添加单元测试 — 覆盖 createPrescription (含重复开具保护) / getByConsultationId
+ * 覆盖 createPrescription（含重复开具保护）和 getByConsultationId。
  */
 @Slf4j
 @Service

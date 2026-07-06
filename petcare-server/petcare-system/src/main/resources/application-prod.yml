@@ -1,5 +1,10 @@
 # 生产环境配置
 spring:
+  # 生产环境必须禁用 Flyway 自动迁移
+  # 数据库变更应通过人工审核的 SQL 脚本执行，避免种子数据泄漏或意外 schema 变更
+  flyway:
+    enabled: false
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -20,6 +25,19 @@ spring:
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+# Knife4j / Swagger — 生产环境必须关闭
+knife4j:
+  enable: false
+springdoc:
+  api-docs:
+    enabled: false
+
+# CORS — 生产环境必须配置为实际域名
+# 多个域名用英文逗号分隔，示例：https://web.petcare.com,https://admin.petcare.com
+cors:
+  allowed-origins:
+  allowed-origin-patterns: ${CORS_ORIGIN_PATTERNS:}
 
 logging:
   level:

@@ -35,7 +35,7 @@ public class Knife4jConfig {
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("PetCare Team")
-                                .email("team@petcare.com"))
+                                .email("2733808428@qq.com"))
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0")))

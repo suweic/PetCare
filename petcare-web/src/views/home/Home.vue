@@ -8,7 +8,7 @@
             <h2>{{ greeting }}</h2>
             <p>{{ userStore.userInfo?.nickname || '宠主' }}，你的宠物今天怎么样？</p>
           </div>
-          <el-avatar :size="44" :src="userStore.userInfo?.avatar" class="header-avatar" />
+          <el-avatar :size="44" :src="avatarOf(userStore.userInfo?.avatar)" class="header-avatar" @error="onAvatarError" />
         </div>
         <!-- 搜索栏 -->
         <div class="search-bar" @click="$router.push('/doctor-list')">
@@ -39,7 +39,7 @@
         </div>
         <div class="action-item" @click="$router.push('/pet/list')">
           <div class="action-icon" style="background: #fff3e0">
-            <el-icon :size="22" color="#ff9800"><PawPrint /></el-icon>
+            <el-icon :size="22" color="#ff9800"><PawIcon /></el-icon>
           </div>
           <span>宠物档案</span>
         </div>
@@ -86,7 +86,7 @@
             @click="$router.push(`/consult/doctor/${doc.id}`)"
           >
             <div class="doc-card-top">
-              <el-avatar :size="56" :src="doc.avatar" />
+              <el-avatar :size="56" :src="avatarOf(doc.avatar, true)" @error="onAvatarError" />
               <div class="doc-badge" v-if="doc.rating">⭐ {{ doc.rating.toFixed(1) }}</div>
             </div>
             <div class="doc-card-body">
@@ -112,8 +112,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import MainLayout from '@/layouts/MainLayout.vue'
+import PawIcon from '@/components/PawIcon.vue'
 import { useUserStore } from '@/stores/user'
 import { getDoctorList } from '@/api/doctor'
+import { avatarOf, onAvatarError } from '@/utils/avatar-helper'
 import type { DoctorListItem } from '@/types'
 
 const userStore = useUserStore()

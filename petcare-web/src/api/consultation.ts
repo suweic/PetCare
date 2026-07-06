@@ -31,7 +31,7 @@ export function getConsultationDetail(id: number) {
 
 /** 问诊消息记录 */
 export function getConsultationMessages(id: number) {
-  return request.get<ApiResult<ConsultationMessage[]>>(`/consultation/${id}/messages`)
+  return request.get<ApiResult<PageData<ConsultationMessage>>>(`/consultation/${id}/messages`)
 }
 
 /** 取消问诊 */

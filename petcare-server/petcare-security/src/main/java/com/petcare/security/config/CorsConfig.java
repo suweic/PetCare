@@ -46,7 +46,11 @@ public class CorsConfig {
         config.setAllowedOrigins(origins);
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        // 注意：allowCredentials=true 时不允许使用 "*" 作为 allowedHeaders
+        // CORS 规范要求凭据模式下必须列出明确的头部名称
+        config.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "X-Requested-With",
+                "Accept", "Origin", "Cache-Control"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

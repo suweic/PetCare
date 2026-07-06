@@ -6,7 +6,7 @@
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </div>
       <div class="header-info">
-        <el-avatar :size="36" :src="doctorInfo?.avatar" />
+        <el-avatar :size="36" :src="avatarOf(doctorInfo?.avatar, true)" @error="onAvatarError" />
         <div class="header-text">
           <div class="header-name">{{ doctorInfo?.realName || '问诊中' }}</div>
           <div class="header-status">
@@ -45,7 +45,7 @@
         :class="{ 'msg-self': msg.senderType === 1 }"
       >
         <!-- 医生头像（左侧） -->
-        <el-avatar v-if="msg.senderType === 2" :size="32" :src="doctorInfo?.avatar" class="msg-avatar" />
+        <el-avatar v-if="msg.senderType === 2" :size="32" :src="avatarOf(doctorInfo?.avatar, true)" class="msg-avatar" @error="onAvatarError" />
 
         <div class="msg-wrapper">
           <div class="msg-bubble" :class="{ 'bubble-self': msg.senderType === 1, 'bubble-other': msg.senderType === 2 }">
@@ -63,7 +63,7 @@
         </div>
 
         <!-- 用户头像（右侧） -->
-        <el-avatar v-if="msg.senderType === 1" :size="32" :src="userStore.userInfo?.avatar" class="msg-avatar" />
+        <el-avatar v-if="msg.senderType === 1" :size="32" :src="avatarOf(userStore.userInfo?.avatar)" class="msg-avatar" @error="onAvatarError" />
       </div>
     </div>
 
@@ -145,6 +145,7 @@ import { useUserStore } from '@/stores/user'
 import { getDoctorDetail } from '@/api/doctor'
 import { uploadChatImage } from '@/api/consultation'
 import { validateImage } from '@/utils/upload'
+import { avatarOf, onAvatarError } from '@/utils/avatar-helper'
 import {
   connectWs, disconnectWs, sendWsMessage,
   wsConnected, wsReconnecting,

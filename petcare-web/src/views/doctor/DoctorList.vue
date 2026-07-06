@@ -35,7 +35,7 @@
           class="doc-card"
           @click="$router.push(`/consult/doctor/${doc.id}`)"
         >
-          <el-avatar :size="52" :src="doc.avatar" />
+          <el-avatar :size="52" :src="avatarOf(doc.avatar, true)" @error="onAvatarError" />
           <div class="doc-body">
             <div class="doc-name">
               {{ doc.realName }}
@@ -74,6 +74,7 @@ import { Search, ArrowRight } from '@element-plus/icons-vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import NavBar from '@/layouts/NavBar.vue'
 import { getDoctorList } from '@/api/doctor'
+import { avatarOf, onAvatarError } from '@/utils/avatar-helper'
 import type { DoctorListItem } from '@/types'
 
 const route = useRoute()

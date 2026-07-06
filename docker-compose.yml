@@ -17,17 +17,19 @@ services:
     container_name: petcare-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?err: DB_ROOT_PASSWORD 未设置，请在 .env 中配置}
       MYSQL_DATABASE: ${DB_NAME:-petcare}
       MYSQL_USER: ${DB_USERNAME:-petcare}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-petcare123}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?err: DB_PASSWORD 未设置，请在 .env 中配置}
     ports:
+      # 生产环境注意：切勿将 3306 端口暴露到公网。设置 MYSQL_PORT 为空值即可关闭端口映射。
+      # 开发环境：设置 MYSQL_PORT=3306 即可用 Navicat/DBeaver 等客户端直连调试。
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root123}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:?err}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -44,12 +46,13 @@ services:
       redis-server
       --appendonly yes
       ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    # 生产环境：切勿暴露 Redis 端口到公网，设置 REDIS_PORT 为空值关闭端口映射。
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-me-redis}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?err}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,14 +74,14 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-petcare}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=true&requireSSL=true
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-petcare}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=true&requireSSL=false
       DB_USERNAME: ${DB_USERNAME:-petcare}
-      DB_PASSWORD: ${DB_PASSWORD:-petcare123}
+      DB_PASSWORD: ${DB_PASSWORD:?err: DB_PASSWORD 未设置，请在 .env 中配置}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me-redis}
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string-at-least-32-chars}
-      AES_KEY: ${AES_KEY:-change-me-to-a-random-base64-string-at-least-32-chars}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?err: REDIS_PASSWORD 未设置，请在 .env 中配置}
+      JWT_SECRET: ${JWT_SECRET:?err: JWT_SECRET 未设置 — 生成: openssl rand -base64 32}
+      AES_KEY: ${AES_KEY:?err: AES_KEY 未设置 — 生成: openssl rand -base64 32}
       LLM_API_URL: ${LLM_API_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
@@ -98,7 +101,7 @@ services:
     depends_on:
       - server
     ports:
-      - "${ADMIN_PORT:-8081}:80"
+      - "${ADMIN_PORT:-8081}:8080"
     networks:
       - petcare-net
 
@@ -113,7 +116,7 @@ services:
     depends_on:
       - server
     ports:
-      - "${WEB_PORT:-8082}:80"
+      - "${WEB_PORT:-8082}:8080"
     networks:
       - petcare-net
 

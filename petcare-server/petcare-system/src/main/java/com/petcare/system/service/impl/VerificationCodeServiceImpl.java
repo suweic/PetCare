@@ -21,6 +21,7 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
     private static final String CODE_PREFIX = "sms:code:";
     private static final String LIMIT_PREFIX = "sms:limit:";
     private static final String IP_LIMIT_PREFIX = "sms:ip_limit:";
+    private static final String CODE_ATTEMPT_PREFIX = "sms:attempt:";
     private static final long CODE_EXPIRE_SECONDS = 300;  // 验证码5分钟有效
     private static final long LIMIT_SECONDS = 60;          // 60秒内不可重复发送
     private static final int CODE_LENGTH = 6;
@@ -28,6 +29,9 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
     /** 同一 IP 每分钟最多发送次数 */
     private static final int IP_MAX_REQUESTS = 3;
     private static final long IP_LIMIT_SECONDS = 60;
+
+    /** 同一验证码最大尝试验证次数（防暴力破解） */
+    private static final int MAX_CODE_ATTEMPTS = 5;
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -64,7 +68,7 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
         // 设置发送频率限制（60秒过期）
         stringRedisTemplate.opsForValue().set(limitKey, "1", LIMIT_SECONDS, TimeUnit.SECONDS);
 
-        log.info("验证码已发送: phone={}, ip={}", phone, clientIp);
+        log.info("验证码已发送: phone={}, ip={}", maskPhone(phone), clientIp);
         // TODO: 生产环境对接真实短信服务（阿里云/腾讯云短信SDK）
         return code;
     }
@@ -112,12 +116,32 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
             return false;
         }
 
+        // 验证码尝试次数限制（防暴力破解）
+        String attemptKey = CODE_ATTEMPT_PREFIX + phone;
+        Long attempts = stringRedisTemplate.opsForValue().increment(attemptKey);
+        if (attempts != null && attempts == 1) {
+            // 首次尝试：TTL 与验证码有效期对齐
+            Long codeTtl = stringRedisTemplate.getExpire(codeKey);
+            if (codeTtl != null && codeTtl > 0) {
+                stringRedisTemplate.expire(attemptKey, codeTtl, java.util.concurrent.TimeUnit.SECONDS);
+            }
+        }
+
+        if (attempts != null && attempts > MAX_CODE_ATTEMPTS) {
+            // 超过最大尝试次数：删除验证码，强制重新获取
+            stringRedisTemplate.delete(codeKey);
+            stringRedisTemplate.delete(attemptKey);
+            log.warn("验证码尝试次数超限 (>{})：phone={}, 已作废验证码", MAX_CODE_ATTEMPTS, phone);
+            return false;
+        }
+
         if (!storedCode.equals(code)) {
             return false;
         }
 
         // 验证码一次性使用，验证通过后删除
         stringRedisTemplate.delete(codeKey);
+        stringRedisTemplate.delete(attemptKey);
         log.info("验证码校验通过并已消费: phone={}", phone);
         return true;
     }
@@ -129,5 +153,15 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
             sb.append(random.nextInt(10));
         }
         return sb.toString();
+    }
+
+    /**
+     * 手机号脱敏：保留前3位和后4位。
+     */
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return "***";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

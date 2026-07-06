@@ -100,7 +100,7 @@ public class DoctorServiceImpl implements DoctorService {
         result.setToken(token);
         result.setUser(UserConverter.INSTANCE.toUserInfoDTO(user));
 
-        log.info("医生登录成功: userId={}, phone={}", user.getId(), user.getPhone());
+        log.info("医生登录成功: userId={}, phone={}", user.getId(), maskPhone(user.getPhone()));
         return result;
     }
 
@@ -135,7 +135,7 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setStatus(DoctorStatus.PENDING.getCode());
         doctorMapper.insert(doctor);
 
-        log.info("医生注册成功: userId={}, phone={}", user.getId(), user.getPhone());
+        log.info("医生注册成功: userId={}, phone={}", user.getId(), maskPhone(user.getPhone()));
     }
 
     @Override
@@ -151,13 +151,15 @@ public class DoctorServiceImpl implements DoctorService {
             throw BusinessException.notFound("医生不存在或已禁用");
         }
 
-        // 查询最近5条评价
-        List<Evaluation> evaluations = evaluationMapper.selectList(
+        // 查询最近5条评价（使用 MyBatis-Plus Page 避免硬编码 SQL LIMIT）
+        Page<Evaluation> evalPage = evaluationMapper.selectPage(
+                new Page<>(1, 5),
                 new LambdaQueryWrapper<Evaluation>()
                         .eq(Evaluation::getDoctorId, doctorId)
                         .eq(Evaluation::getStatus, 1)
-                        .orderByDesc(Evaluation::getCreateTime)
-                        .last("LIMIT 5"));
+                        .orderByDesc(Evaluation::getCreateTime));
+
+        List<Evaluation> evaluations = evalPage.getRecords();
 
         // 批量查询评价关联的用户信息，避免N+1问题
         List<DoctorEvaluationDTO> evalDTOs = batchToEvaluationDTOs(evaluations);
@@ -321,5 +323,15 @@ public class DoctorServiceImpl implements DoctorService {
             case 2 -> "已约满";
             default -> "未知";
         };
+    }
+
+    /**
+     * 手机号脱敏：保留前3位和后4位，中间用****替换。
+     */
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return "***";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

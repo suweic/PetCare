@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 PetCare Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.petcare.common.util;
 
 import javax.crypto.Cipher;
@@ -56,6 +72,28 @@ public final class AESEncryptUtil {
 
     private AESEncryptUtil() {
         // 工具类，禁止实例化
+    }
+
+    /**
+     * 通过 Spring 配置初始化密钥（优先级高于环境变量）。
+     *
+     * <p>由 {@code AesConfig} 在 Spring 上下文启动后调用。
+     * 如果此处提供了有效密钥，将覆盖静态初始化块中从环境变量加载的密钥。</p>
+     *
+     * @param keyBase64 32 字节 Base64 编码的 AES-256 密钥
+     * @throws IllegalArgumentException 如果密钥长度不是 32 字节
+     */
+    public static void configureWithSpring(String keyBase64) {
+        if (keyBase64 == null || keyBase64.isBlank()) {
+            return;
+        }
+        byte[] keyBytes = Base64.getDecoder().decode(keyBase64);
+        if (keyBytes.length != 32) {
+            throw new IllegalArgumentException(
+                    "aes.key 必须为 32 字节（256 位）的 Base64 编码字符串。当前长度: "
+                            + keyBytes.length + " 字节。生成: openssl rand -base64 32");
+        }
+        secretKey = new SecretKeySpec(keyBytes, "AES");
     }
 
     /**

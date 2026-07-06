@@ -276,7 +276,7 @@ public class PreConsultationServiceImpl implements PreConsultationService {
             backoff = @Backoff(delay = 1000, multiplier = 2.0, maxDelay = 8000),
             label = "llm-api-call"
     )
-    private String callLLM(String prompt) {
+    String callLLM(String prompt) {
         RestClient restClient = RestClient.builder()
                 .baseUrl(llmApiUrl)
                 .defaultHeader("Authorization", "Bearer " + llmApiKey)

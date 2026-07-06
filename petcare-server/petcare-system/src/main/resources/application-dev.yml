@@ -4,18 +4,28 @@
 app:
   dev-mode: true
 
+# JWT 配置
+jwt:
+  secret: ${JWT_SECRET:changeme}
+  expiration: 86400
+
 spring:
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: false
   datasource:
-    url: jdbc:mysql://localhost:3306/petcare?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    url: jdbc:mysql://localhost:3307/petcare?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USERNAME:petcare}
+    password: ${DB_PASSWORD:changeme}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:changeme}
 
 mybatis-plus:
   configuration:

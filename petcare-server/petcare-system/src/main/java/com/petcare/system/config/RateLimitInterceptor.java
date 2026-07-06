@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final String RATE_LIMIT_PREFIX = "rate_limit:";
-    private static final int MAX_REQUESTS_PER_SECOND = 20;
+    private static final int MAX_REQUESTS = 20;
     private static final long WINDOW_SECONDS = 1;
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -39,19 +39,30 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String key = RATE_LIMIT_PREFIX + clientIp;
 
         try {
-            Long count = stringRedisTemplate.opsForValue().increment(key);
-            if (count != null && count == 1) {
-                stringRedisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
-            }
-            if (count != null && count > MAX_REQUESTS_PER_SECOND) {
+            long now = System.currentTimeMillis();
+            long windowStart = now - WINDOW_SECONDS * 1000;
+
+            // 滑动窗口：使用 Redis Sorted Set，score 为时间戳
+            // 1. 移除窗口外的旧记录
+            stringRedisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);
+            // 2. 统计当前窗口内的请求数
+            Long count = stringRedisTemplate.opsForZSet().zCard(key);
+            // 3. 检查是否超限
+            if (count != null && count >= MAX_REQUESTS) {
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json;charset=UTF-8");
                 response.getWriter().write(
                         "{\"code\":429,\"message\":\"请求过于频繁，请稍后再试\",\"data\":null,\"timestamp\":"
-                                + System.currentTimeMillis() + "}");
+                                + now + "}");
                 log.warn("API限流触发: ip={}, count={}", clientIp, count);
                 return false;
             }
+            // 4. 记录本次请求（使用纳秒级 member 避免冲突）
+            stringRedisTemplate.opsForZSet().add(key,
+                    String.valueOf(now) + ":" + Thread.currentThread().getId(),
+                    now);
+            // 5. 设置过期时间（窗口结束后自动清理整条 key）
+            stringRedisTemplate.expire(key, WINDOW_SECONDS + 1, TimeUnit.SECONDS);
         } catch (Exception e) {
             // Redis 不可用时放行，避免级联故障
             log.debug("限流检查跳过（Redis不可用）: {}", e.getMessage());

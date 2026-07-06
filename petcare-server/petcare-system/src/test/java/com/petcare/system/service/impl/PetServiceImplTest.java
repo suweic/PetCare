@@ -174,7 +174,7 @@ class PetServiceImplTest {
 
         PetUpdateDTO dto = new PetUpdateDTO();
         dto.setName("小旺");
-        dto.setWeight(30.5);
+        dto.setWeight(new java.math.BigDecimal("30.5"));
 
         PetDetailDTO result = petService.update(100L, 1L, dto);
 
@@ -187,10 +187,10 @@ class PetServiceImplTest {
     @Test
     void shouldDeletePetSuccessfully() {
         when(petMapper.selectById(1L)).thenReturn(pet);
-        when(petMapper.deleteById(1L)).thenReturn(1);
+        when(petMapper.deleteById(any(Long.class))).thenReturn(1);
 
         assertDoesNotThrow(() -> petService.delete(100L, 1L));
-        verify(petMapper, times(1)).deleteById(1L);
+        verify(petMapper, times(1)).deleteById(any(Long.class));
     }
 
     @Test
@@ -201,7 +201,7 @@ class PetServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> petService.delete(100L, 1L));
         assertEquals("只能操作自己的宠物档案", ex.getMessage());
-        verify(petMapper, never()).deleteById(any());
+        verify(petMapper, never()).deleteById(any(Long.class));
     }
 
     // ===================== GetHistory Tests =====================

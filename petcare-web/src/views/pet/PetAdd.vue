@@ -148,6 +148,7 @@ import { ArrowLeft, Camera } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { usePetStore } from '@/stores/pet'
 import { getPetDetail, uploadPetAvatar } from '@/api/pet'
+import { safeAvatar } from '@/utils/avatar'
 
 const route = useRoute()
 const router = useRouter()
@@ -200,7 +201,7 @@ onMounted(async () => {
           sterilized: data.data.sterilized || 0,
         })
         if (data.data.avatar) {
-          avatarUrl.value = data.data.avatar
+          avatarUrl.value = safeAvatar(data.data.avatar)
         }
       }
     } catch { /* ignore */ }
@@ -254,7 +255,7 @@ async function handleSubmit() {
       name: form.name,
       species: form.species!,
       breed: form.breed,
-      gender: form.gender,
+      gender: form.gender ?? undefined,
       birthday: form.birthday,
       weight: form.weight ? Number(form.weight) : undefined,
       medicalHistory: form.medicalHistory,

@@ -2,23 +2,50 @@
 -- PetCare 宠物在线问诊系统数据库初始化脚本
 -- 数据库版本: MySQL 8.0
 -- 创建时间: 2026-06-26
--- 更新日期: 2026-07-02 — 安全加固（生产部署版本）
+-- 更新日期: 2026-07-02 — Flyway 双路径部署
+
+-- 强制使用 UTF-8 编码执行脚本
+SET NAMES utf8mb4;
+SET CHARACTER_SET_CLIENT = utf8mb4;
+SET CHARACTER_SET_CONNECTION = utf8mb4;
+SET CHARACTER_SET_RESULTS = utf8mb4;
 -- =============================================
--- ⚠️ 重要说明：
+-- ⚠️ 部署路径说明（二选一）：
+--
+--   路径 A — Docker MySQL entrypoint（当前方案）：
+--     此文件挂载到 MySQL 容器的 /docker-entrypoint-initdb.d/
+--     MySQL 首次初始化时自动执行，包含完整 DDL + 种子数据
+--     适合：Docker Compose 一键部署
+--
+--   路径 B — Flyway 版本化迁移（推荐生产环境）：
+--     Spring Boot 启动时由 Flyway 按版本顺序自动执行：
+--       V1__initial_schema.sql   → 完整 DDL（与路径 A 等效）
+--       V2__refresh_token.sql    → RefreshToken 表
+--       V3__demo_seed_data.sql   → 种子数据（与路径 A 等效）
+--     适合：已有数据库的增量升级、多环境管理
+--     配置：application.yml 中 spring.flyway.enabled=true
+--
+--   ⚠️ 两种路径互斥 — 使用 Flyway 时请勿同时挂载此文件到 Docker entrypoint
+--
+-- =============================================
+-- 重要说明：
 --   1. 此脚本使用 CREATE TABLE IF NOT EXISTS，可安全重复执行
 --   2. 种子数据使用 INSERT IGNORE，不会覆盖已有数据
---   3. 首次部署执行此脚本即可，后续数据迁移请使用 Flyway/Liquibase
---   4. Docker MySQL entrypoint 仅在首次初始化时执行此脚本
---   5. 如需重置数据库：手动删库后重建容器（docker compose down -v && docker compose up -d）
+--   3. 如需重置数据库：手动删库后重建容器（docker compose down -v && docker compose up -d）
 -- =============================================
--- 🔴 生产环境安全警告（必读！）：
---   此脚本包含仅供开发环境使用的种子数据：
---   (a) 所有测试账号密码均为 "admin123"（bcrypt hash: $2a$10$N.zmdr9k7uOCQb376NoUnu）
+-- 🔴🔴🔴 生产环境安全警告（必读！） 🔴🔴🔴
+--   ⚠️  DEMO DATA — 以下种子数据仅供开发/演示环境使用 ⚠️
+--   (a) 所有演示账号密码均为 "admin123"
+--       bcrypt hash: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W
+--       管理员账号: admin / admin123
+--       医生手机号: 13900139001 ~ 13900139003 / admin123
+--       用户手机号: 13800138001 ~ 13800138003 / admin123
 --   (b) 如果你在生产环境部署，请执行以下操作之一：
---       【推荐】删除下面 "-- BEGIN SEED DATA --" 到 "-- END SEED DATA --" 之间的所有 INSERT 语句
+--       【强烈推荐】删除下面 "-- BEGIN SEED DATA --" 到 "-- END SEED DATA --" 之间的所有内容
 --       【或】部署后立即登录后台修改所有账号密码
 --       【或】手动替换下方所有 bcrypt 哈希值为你自己生成的密码哈希
---   (c) 生成新 bcrypt 哈希: 使用在线工具或 bcrypt-cli，确保与 Spring Security 配置一致
+--   (c) 生成新 bcrypt 哈希: python3 -c "import bcrypt; print(bcrypt.hashpw(b'密码', bcrypt.gensalt()).decode())"
+--   (d) 生产环境首次启动请务必修改管理员默认密码（管理后台 → 个人中心 → 修改密码）
 -- =============================================
 
 -- 创建数据库
@@ -561,129 +588,8 @@ CREATE TABLE IF NOT EXISTS `doctor_audit_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='医生审核记录表';
 
 -- =============================================
--- 初始化数据（⚠️ 仅用于开发环境）
--- =============================================
--- BEGIN SEED DATA --  生产环境请删除此标记之间的所有 INSERT 语句
--- =============================================
-
--- 初始化角色（admin表依赖role表）
-INSERT IGNORE INTO `role` (`id`, `role_name`, `role_code`, `description`, `status`, `create_time`) VALUES
-(1, '超级管理员', 'SUPER_ADMIN', '拥有系统所有权限', 1, NOW()),
-(2, '运营管理员', 'OPERATION_ADMIN', '负责用户、订单、内容管理', 1, NOW()),
-(3, '审核员', 'AUDITOR', '负责医生资质审核', 1, NOW());
-
--- 初始化管理员（1条）
-INSERT IGNORE INTO `admin` (`id`, `username`, `password`, `real_name`, `phone`, `email`, `role_id`, `status`, `create_time`) VALUES
-(1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '超级管理员', '13800138000', 'admin@petcare.com', 1, 1, NOW());
-
--- 初始化科室（6个）
-INSERT IGNORE INTO `department` (`id`, `name`, `description`, `icon`, `sort`, `status`, `create_time`) VALUES
-(1, '内科', '负责宠物常见内科疾病的诊断和治疗', 'internal-medicine.png', 1, 1, NOW()),
-(2, '外科', '负责宠物外科手术和外伤处理', 'surgery.png', 2, 1, NOW()),
-(3, '皮肤科', '负责宠物皮肤病的诊断和治疗', 'dermatology.png', 3, 1, NOW()),
-(4, '眼科', '负责宠物眼部疾病的诊断和治疗', 'ophthalmology.png', 4, 1, NOW()),
-(5, '口腔科', '负责宠物口腔健康和牙齿护理', 'dentistry.png', 5, 1, NOW()),
-(6, '营养科', '负责宠物营养咨询和饮食指导', 'nutrition.png', 6, 1, NOW());
-
--- 初始化医生用户（3条，doctor表依赖user表）
-INSERT IGNORE INTO `user` (`id`, `phone`, `password`, `nickname`, `avatar`, `real_name`, `user_type`, `status`, `create_time`) VALUES
-(1001, '13900139001', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '李医生', 'https://petcare.com/avatar/doctor1.png', '李明', 2, 1, NOW()),
-(1002, '13900139002', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '王医生', 'https://petcare.com/avatar/doctor2.png', '王芳', 2, 1, NOW()),
-(1003, '13900139003', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '张医生', 'https://petcare.com/avatar/doctor3.png', '张伟', 2, 1, NOW());
-
--- 初始化医生（3条测试数据）
-INSERT IGNORE INTO `doctor` (`id`, `user_id`, `department_id`, `title`, `specialty`, `experience`, `education`, `hospital`, `introduction`, `consultation_fee`, `rating`, `consultation_count`, `status`, `create_time`) VALUES
-(1, 1001, 1, '主治医师', '犬猫内科疾病、消化系统疾病、呼吸系统疾病', 10, '硕士', '北京动物医院', '10年宠物内科临床经验，擅长犬猫消化系统疾病、呼吸系统疾病、内分泌疾病的诊断与治疗。', 68.00, 4.8, 156, 1, NOW()),
-(2, 1002, 2, '副主任医师', '犬猫外科手术、骨折修复、肿瘤切除', 15, '博士', '上海宠物专科医院', '15年宠物外科临床经验，擅长各种外科手术，包括骨折修复、肿瘤切除、软组织手术等。', 88.00, 4.9, 234, 1, NOW()),
-(3, 1003, 3, '主治医师', '犬猫皮肤病、过敏性皮炎、真菌性皮肤病', 8, '硕士', '广州宠物诊所', '8年宠物皮肤科临床经验，擅长犬猫过敏性皮炎、真菌性皮肤病、寄生虫性皮炎的诊断与治疗。', 58.00, 4.7, 98, 1, NOW());
-
--- 初始化普通用户测试数据
-INSERT IGNORE INTO `user` (`id`, `phone`, `password`, `nickname`, `avatar`, `real_name`, `user_type`, `status`, `create_time`) VALUES
-(1, '13800138001', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '铲屎官小王', 'https://petcare.com/avatar/user1.png', '王小华', 1, 1, NOW()),
-(2, '13800138002', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '猫奴小李', 'https://petcare.com/avatar/user2.png', '李小红', 1, 1, NOW()),
-(3, '13800138003', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z2EHdHthJEqCxaYFCG3tE.9W', '爱宠达人', 'https://petcare.com/avatar/user3.png', '张小明', 1, 1, NOW());
-
--- 初始化宠物测试数据
-INSERT IGNORE INTO `pet` (`id`, `user_id`, `name`, `species`, `breed`, `gender`, `birthday`, `weight`, `avatar`, `medical_history`, `allergy_info`, `sterilized`, `create_time`) VALUES
-(1, 1, '旺财', 2, '金毛', 1, '2022-06-01', 25.50, 'https://petcare.com/avatar/pet1.png', '无', '无', 1, NOW()),
-(2, 1, '咪咪', 1, '英短', 2, '2023-03-15', 4.20, 'https://petcare.com/avatar/pet2.png', '曾患猫癣', '无', 0, NOW()),
-(3, 2, '雪球', 1, '布偶', 1, '2023-08-20', 5.80, 'https://petcare.com/avatar/pet3.png', '无', '对鸡肉过敏', 1, NOW());
-
--- 初始化问诊测试数据
-INSERT IGNORE INTO `consultation` (`id`, `user_id`, `doctor_id`, `pet_id`, `department_id`, `type`, `status`, `chief_complaint`, `symptoms`, `scheduled_time`, `start_time`, `end_time`, `create_time`) VALUES
-(1, 1, 1, 1, 1, 1, 2, '食欲不振', '最近3天食欲明显下降，精神萎靡，偶尔呕吐白色泡沫', '2026-06-20 10:00:00', '2026-06-20 10:00:00', '2026-06-20 10:30:00', '2026-06-20 09:30:00'),
-(2, 2, 3, 3, 3, 1, 1, '皮肤瘙痒', '全身瘙痒，频繁抓挠，背部毛发脱落', '2026-06-26 14:00:00', '2026-06-26 14:00:00', NULL, '2026-06-26 13:30:00'),
-(3, 3, NULL, 1, 2, 1, 0, '后腿跛行', '昨天出门玩耍后回来发现后腿不敢着地，走路跛行', NULL, NULL, NULL, NOW());
-
--- 初始化问诊消息测试数据
-INSERT IGNORE INTO `consultation_message` (`id`, `consultation_id`, `sender_type`, `sender_id`, `user_id`, `doctor_id`, `message_type`, `content`, `is_read`, `create_time`) VALUES
-(1, 1, 1, 1, 1, NULL, 1, '医生您好，我家狗狗最近食欲不振，精神也不太好', 1, '2026-06-20 10:01:00'),
-(2, 1, 2, 1, NULL, 1, 1, '您好，请问狗狗最近饮食有变化吗？有没有出现呕吐或腹泻？', 1, '2026-06-20 10:02:00'),
-(3, 1, 1, 1, 1, NULL, 1, '饮食和平时一样，昨天吐了两次白色泡沫', 1, '2026-06-20 10:03:00'),
-(4, 1, 2, 1, NULL, 1, 1, '根据您描述的情况，可能是肠胃问题，建议禁食观察，若持续呕吐请及时就医', 1, '2026-06-20 10:25:00'),
-(5, 2, 1, 2, 2, NULL, 1, '医生您好，我家猫咪一直抓挠身体，背部毛发都掉了一块', 1, '2026-06-26 14:01:00'),
-(6, 2, 2, 3, NULL, 3, 1, '您好，请拍一张患处的照片发过来，我需要看一下具体情况', 0, '2026-06-26 14:02:00');
-
--- 初始化处方测试数据
-INSERT IGNORE INTO `prescription` (`id`, `consultation_id`, `user_id`, `doctor_id`, `pet_id`, `diagnosis`, `advice`, `status`, `create_time`) VALUES
-(1, 1, 1, 1, 1, '犬急性胃炎', '1. 禁食24小时，可少量饮水\r\n2. 口服奥美拉唑，每日1次，每次1粒\r\n3. 口服益生菌调理肠胃\r\n4. 若持续呕吐或出现其他异常，及时就医', 2, '2026-06-20 10:30:00');
-
--- 初始化药品字典测试数据
-INSERT IGNORE INTO `medicine` (`id`, `name`, `generic_name`, `specification`, `unit`, `price`, `manufacturer`, `category`, `description`, `status`, `create_time`) VALUES
-(1, '奥美拉唑胶囊', '奥美拉唑', '20mg*14粒', '盒', 35.00, '阿斯利康', '消化系统', '用于治疗胃溃疡、十二指肠溃疡等', 1, NOW()),
-(2, '益生菌粉', '复合益生菌', '2g*30袋', '盒', 68.00, '汤臣倍健', '调节肠道', '调节肠道菌群平衡', 1, NOW()),
-(3, '阿莫西林胶囊', '阿莫西林', '0.25g*24粒', '盒', 25.00, '哈药集团', '抗生素', '用于敏感菌引起的感染', 1, NOW()),
-(4, '伊曲康唑胶囊', '伊曲康唑', '0.1g*14粒', '盒', 85.00, '辉瑞', '抗真菌', '用于治疗真菌感染', 1, NOW()),
-(5, '氯雷他定片', '氯雷他定', '10mg*12片', '盒', 28.00, '开瑞坦', '抗过敏', '用于缓解过敏性皮炎症状', 1, NOW());
-
--- 初始化处方明细测试数据
-INSERT IGNORE INTO `prescription_item` (`id`, `prescription_id`, `medicine_id`, `medicine_name`, `specification`, `dosage`, `frequency`, `duration`, `quantity`, `create_time`) VALUES
-(1, 1, 1, '奥美拉唑胶囊', '20mg*14粒', '1粒/次', '每日1次', '3天', 1, '2026-06-20 10:30:00'),
-(2, 1, 2, '益生菌粉', '2g*30袋', '1袋/次', '每日2次', '5天', 1, '2026-06-20 10:30:00');
-
--- 初始化订单测试数据
-INSERT IGNORE INTO `order` (`id`, `order_no`, `user_id`, `consultation_id`, `type`, `amount`, `discount_amount`, `actual_amount`, `status`, `payment_method`, `payment_no`, `payment_time`, `create_time`) VALUES
-(1, 'PC2026062000001', 1, 1, 1, 68.00, 0.00, 68.00, 1, 1, 'WX2026062010001', '2026-06-20 09:45:00', '2026-06-20 09:30:00'),
-(2, 'PC2026062600002', 2, 2, 1, 58.00, 0.00, 58.00, 1, 1, 'WX2026062614001', '2026-06-26 13:45:00', '2026-06-26 13:30:00'),
-(3, 'PC2026062600003', 3, 3, 1, 88.00, 0.00, 88.00, 0, NULL, NULL, NULL, NOW());
-
--- 初始化评价测试数据
-INSERT IGNORE INTO `evaluation` (`id`, `consultation_id`, `user_id`, `doctor_id`, `rating`, `content`, `is_anonymous`, `reply`, `reply_time`, `status`, `create_time`) VALUES
-(1, 1, 1, 1, 5, '李医生非常专业，诊断准确，给出的建议很实用！狗狗已经恢复健康了，非常感谢！', 0, '很高兴能帮助到您和您的宠物，祝狗狗健康快乐！', '2026-06-21 10:00:00', 1, '2026-06-21 09:00:00');
-
--- 初始化评价标签测试数据
-INSERT IGNORE INTO `evaluation_tag` (`id`, `evaluation_id`, `tag_name`, `create_time`) VALUES
-(1, 1, '专业', NOW()),
-(2, 1, '耐心', NOW()),
-(3, 1, '有效', NOW());
-
--- 初始化医生排班测试数据
-INSERT IGNORE INTO `doctor_schedule` (`id`, `doctor_id`, `schedule_date`, `start_time`, `end_time`, `status`, `create_time`) VALUES
-(1, 1, '2026-06-27', '09:00:00', '12:00:00', 1, NOW()),
-(2, 1, '2026-06-27', '14:00:00', '18:00:00', 1, NOW()),
-(3, 2, '2026-06-27', '10:00:00', '13:00:00', 1, NOW()),
-(4, 2, '2026-06-27', '15:00:00', '19:00:00', 1, NOW()),
-(5, 3, '2026-06-27', '09:00:00', '17:00:00', 1, NOW());
-
--- 初始化系统配置测试数据
-INSERT IGNORE INTO `system_config` (`id`, `config_key`, `config_value`, `config_desc`, `group_name`, `status`, `create_time`) VALUES
-(1, 'system.name', 'PetCare宠物在线问诊', '系统名称', 'system', 1, NOW()),
-(2, 'system.logo', '/logo.png', '系统Logo', 'system', 1, NOW()),
-(3, 'consultation.timeout', '30', '问诊超时时间（分钟）', 'consultation', 1, NOW()),
-(4, 'consultation.cancel.time', '5', '问诊取消时间（分钟）', 'consultation', 1, NOW()),
-(5, 'payment.timeout', '15', '支付超时时间（分钟）', 'payment', 1, NOW()),
-(6, 'withdrawal.min', '100', '最低提现金额', 'withdrawal', 1, NOW()),
-(7, 'withdrawal.fee.rate', '0.01', '提现手续费率', 'withdrawal', 1, NOW()),
-(8, 'upload.image.max.size', '5', '图片上传最大大小（MB）', 'upload', 1, NOW()),
-(9, 'upload.image.types', 'jpg,jpeg,png,gif', '允许上传的图片类型', 'upload', 1, NOW());
-
--- =============================================
--- END SEED DATA --  生产环境请删除此标记之间的所有 INSERT 语句
--- =============================================
-
--- =============================================
 -- 数据库初始化完成
 -- =============================================
--- 共24张表，含开发环境种子数据
--- 所有种子账号密码均为 bcrypt hash，明文请参考项目文档
+-- 共24张表
+-- 如需开发/演示种子数据，请使用 init-seed.sql
 -- =============================================

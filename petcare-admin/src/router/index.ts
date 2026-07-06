@@ -13,37 +13,40 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
+    component: () => import('@/layouts/AdminLayout.vue'),
     redirect: '/dashboard',
-  },
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('@/views/dashboard/Dashboard.vue'),
-    meta: { title: '工作台', icon: 'Odometer' },
-  },
-  {
-    path: '/doctor/audit',
-    name: 'DoctorAudit',
-    component: () => import('@/views/doctor/DoctorAudit.vue'),
-    meta: { title: '医生审核', icon: 'Checked' },
-  },
-  {
-    path: '/doctor/list',
-    name: 'DoctorList',
-    component: () => import('@/views/doctor/DoctorList.vue'),
-    meta: { title: '医生管理', icon: 'UserFilled' },
-  },
-  {
-    path: '/user/list',
-    name: 'UserList',
-    component: () => import('@/views/user/UserList.vue'),
-    meta: { title: '用户管理', icon: 'Avatar' },
-  },
-  {
-    path: '/consultation/list',
-    name: 'ConsultationList',
-    component: () => import('@/views/consultation/ConsultationList.vue'),
-    meta: { title: '问诊管理', icon: 'ChatDotRound' },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: () => import('@/views/dashboard/Dashboard.vue'),
+        meta: { title: '工作台', icon: 'Odometer' },
+      },
+      {
+        path: 'doctor/audit',
+        name: 'DoctorAudit',
+        component: () => import('@/views/doctor/DoctorAudit.vue'),
+        meta: { title: '医生审核', icon: 'Checked' },
+      },
+      {
+        path: 'doctor/list',
+        name: 'DoctorList',
+        component: () => import('@/views/doctor/DoctorList.vue'),
+        meta: { title: '医生管理', icon: 'UserFilled' },
+      },
+      {
+        path: 'user/list',
+        name: 'UserList',
+        component: () => import('@/views/user/UserList.vue'),
+        meta: { title: '用户管理', icon: 'Avatar' },
+      },
+      {
+        path: 'consultation/list',
+        name: 'ConsultationList',
+        component: () => import('@/views/consultation/ConsultationList.vue'),
+        meta: { title: '问诊管理', icon: 'ChatDotRound' },
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',

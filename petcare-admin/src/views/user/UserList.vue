@@ -28,7 +28,7 @@
         <el-table-column prop="realName" label="真实姓名" width="100" />
         <el-table-column label="类型" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.userType === 2 ? 'warning' : ''" size="small" effect="plain">
+            <el-tag :type="row.userType === 2 ? 'warning' : 'info'" size="small" effect="plain">
               {{ row.userType === 2 ? '医生' : '用户' }}
             </el-tag>
           </template>
@@ -76,7 +76,7 @@
           <el-descriptions-item label="昵称">{{ currentUser.nickname || '-' }}</el-descriptions-item>
           <el-descriptions-item label="真实姓名">{{ currentUser.realName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="类型">
-            <el-tag :type="currentUser.userType === 2 ? 'warning' : ''" size="small" effect="plain">
+            <el-tag :type="currentUser.userType === 2 ? 'warning' : 'info'" size="small" effect="plain">
               {{ currentUser.userType === 2 ? '医生' : '普通用户' }}
             </el-tag>
           </el-descriptions-item>

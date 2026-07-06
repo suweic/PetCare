@@ -39,7 +39,7 @@
         <!-- 头像 -->
         <div class="pet-avatar">
           <img
-            :src="pet.avatar || defaultAvatar"
+            :src="petAvatarOf(pet.avatar)"
             :alt="pet.name"
             @error="onImgError"
           />
@@ -87,6 +87,7 @@ import {
   ArrowLeft, Plus, MoreFilled, Edit, Delete,
 } from '@element-plus/icons-vue'
 import { usePetStore } from '@/stores/pet'
+import { avatarOf as petAvatarOf } from '@/utils/avatar-helper'
 import type { Pet } from '@/types'
 
 const router = useRouter()

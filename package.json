@@ -1,0 +1,13 @@
+{
+  "name": "petcare",
+  "version": "1.0.0",
+  "description": "PetCare 宠物在线问诊系统 — monorepo root",
+  "private": true,
+  "scripts": {
+    "dev:web": "cd petcare-web && npm run dev",
+    "dev:admin": "cd petcare-admin && npm run dev",
+    "build:web": "cd petcare-web && npm run build",
+    "build:admin": "cd petcare-admin && npm run build"
+  },
+  "devDependencies": {}
+}

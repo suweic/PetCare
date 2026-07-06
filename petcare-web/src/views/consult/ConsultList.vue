@@ -16,6 +16,13 @@
 
       <!-- 问诊列表 -->
       <div class="consult-list" v-loading="loading">
+        <!-- 错误兜底：接口失败时给出重试入口，避免控制台一片红 -->
+        <div v-if="errorMsg" class="error-state">
+          <el-empty :description="errorMsg">
+            <el-button type="primary" @click="fetchList">重新加载</el-button>
+          </el-empty>
+        </div>
+
         <div
           v-for="c in store.list"
           :key="c.id"
@@ -116,6 +123,7 @@ const router = useRouter()
 const store = useConsultationStore()
 const loading = ref(false)
 const activeStatus = ref<number | null>(null)
+const errorMsg = ref('')
 
 const tabs = [
   { label: '全部', value: null },
@@ -132,8 +140,12 @@ function switchTab(v: number | null) {
 
 async function fetchList() {
   loading.value = true
+  errorMsg.value = ''
   try {
     await store.fetchList({ status: activeStatus.value ?? undefined })
+  } catch (e: any) {
+    errorMsg.value = e?.message || '加载问诊记录失败，请稍后重试'
+    console.error('[ConsultList] fetchList failed:', e)
   } finally {
     loading.value = false
   }
@@ -264,4 +276,7 @@ function formatDate(d?: string) { return d ? d.slice(0, 16).replace('T', ' ') : 
   display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
   font-size: 14px;
 }
+
+/* 错误态 */
+.error-state { padding: 40px 16px; }
 </style>

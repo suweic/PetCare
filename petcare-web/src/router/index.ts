@@ -79,6 +79,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '个人中心' },
   },
   {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/views/profile/Settings.vue'),
+    meta: { title: '账号设置' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/auth/NotFound.vue'),

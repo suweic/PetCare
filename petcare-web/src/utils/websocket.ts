@@ -6,6 +6,7 @@ import { getToken } from '@/utils/auth'
 let client: Client | null = null
 let reconnectAttempts = 0
 let intentionalClose = false
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const MAX_RECONNECT = 5
 const RECONNECT_DELAY = 3000
 
@@ -44,7 +45,7 @@ export function connectWs(
     connectHeaders: {
       Authorization: `Bearer ${getToken() || ''}`,
     },
-    debug: (str) => {
+    debug: (str: string) => {
       if (import.meta.env.DEV) console.log('[STOMP]', str)
     },
     // 禁用 STOMP 自带重连，使用手动逻辑
@@ -57,7 +58,7 @@ export function connectWs(
     wsConnected.value = true
     wsReconnecting.value = false
     reconnectAttempts = 0
-    console.log('[WS] 已连接')
+    if (import.meta.env.DEV) console.log('[WS] 已连接')
 
     client!.subscribe(`/topic/consultation/${consultationId}`, (msg: IMessage) => {
       try {
@@ -94,7 +95,7 @@ export function connectWs(
   client.activate()
 }
 
-/** 手动重连：3s间隔，最多5次 */
+/** 手动重连：3s间隔，最多5次。使用计时器引用防止并发重连链。 */
 function attemptReconnect(
   consultationId: number,
   onMessage: (msg: WsMessage & { createTime: string }) => void,
@@ -104,22 +105,35 @@ function attemptReconnect(
     wsReconnecting.value = false
     return
   }
-  if (wsReconnecting.value) return // 已经在重连中
+
+  // 防止并发重连：如果已有排队的重连任务则直接跳过
+  if (reconnectTimer !== null) {
+    if (import.meta.env.DEV) console.log('[WS] 已有排队的重连任务，跳过')
+    return
+  }
 
   wsReconnecting.value = true
   reconnectAttempts++
-  console.log(`[WS] 将在 ${RECONNECT_DELAY / 1000}s 后第 ${reconnectAttempts}/${MAX_RECONNECT} 次重连...`)
+  if (import.meta.env.DEV) console.log(`[WS] 将在 ${RECONNECT_DELAY / 1000}s 后第 ${reconnectAttempts}/${MAX_RECONNECT} 次重连...`)
 
-  setTimeout(() => {
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
     wsReconnecting.value = false
-    if (!wsConnected.value && reconnectAttempts < MAX_RECONNECT) {
-      // 先停掉旧的，重新建连
-      if (client) {
-        try { client.deactivate() } catch { /* ignore */ }
+
+    // 二次检查：如果在此期间已连接成功或达到上限，则不再重连
+    if (wsConnected.value || reconnectAttempts >= MAX_RECONNECT) {
+      if (reconnectAttempts >= MAX_RECONNECT) {
+        console.warn(`[WS] 重连 ${MAX_RECONNECT} 次失败，停止重连`)
       }
-      client = null
-      connectWs(consultationId, onMessage)
+      return
     }
+
+    // 先停掉旧的，重新建连
+    if (client) {
+      try { client.deactivate() } catch { /* ignore */ }
+    }
+    client = null
+    connectWs(consultationId, onMessage)
   }, RECONNECT_DELAY)
 }
 
@@ -142,6 +156,13 @@ export function disconnectWs(): void {
   wsConnected.value = false
   wsReconnecting.value = false
   reconnectAttempts = 0
+
+  // 清除任何排队的重连计时器
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
   if (client) {
     client.deactivate()
     client = null

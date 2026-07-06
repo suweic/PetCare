@@ -8,7 +8,8 @@ COPY petcare-security/pom.xml petcare-security/
 COPY petcare-system/pom.xml petcare-system/
 
 # 先下载依赖（利用 Docker 缓存层）
-RUN mvn dependency:go-offline -pl petcare-system -am -B -q || true
+# 使用 dependency:resolve 替代 go-offline，避免静默掩盖依赖错误
+RUN mvn dependency:resolve -pl petcare-system -am -B -q
 
 COPY petcare-common/src petcare-common/src
 COPY petcare-security/src petcare-security/src

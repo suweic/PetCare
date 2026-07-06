@@ -46,7 +46,7 @@ export const useConsultationStore = defineStore('consultation', () => {
   async function fetchMessages(id: number) {
     const { data } = await getConsultationMessages(id)
     if (data.code === 200) {
-      messages.value = data.data
+      messages.value = data.data.records
     }
     return data
   }

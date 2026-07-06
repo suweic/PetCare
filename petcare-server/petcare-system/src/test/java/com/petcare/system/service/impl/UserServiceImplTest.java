@@ -71,8 +71,9 @@ class UserServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：统一错误消息防止账号枚举攻击
         BusinessException exception = assertThrows(BusinessException.class, () -> userService.login(dto));
-        assertEquals("用户不存在", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test
@@ -85,8 +86,9 @@ class UserServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("wrong");
 
+        // 安全加固：统一错误消息防止账号枚举攻击
         BusinessException exception = assertThrows(BusinessException.class, () -> userService.login(dto));
-        assertEquals("密码错误", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test
@@ -99,8 +101,9 @@ class UserServiceImplTest {
         dto.setPhone("13800138000");
         dto.setPassword("password");
 
+        // 安全加固：禁用账号也返回统一错误消息，防止通过错误差异枚举账号状态
         BusinessException exception = assertThrows(BusinessException.class, () -> userService.login(dto));
-        assertEquals("账号已禁用", exception.getMessage());
+        assertEquals("手机号或密码错误", exception.getMessage());
     }
 
     @Test

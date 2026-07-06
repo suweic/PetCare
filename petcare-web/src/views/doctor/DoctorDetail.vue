@@ -6,7 +6,7 @@
       <!-- 医生信息卡片 -->
       <div class="info-card">
         <div class="info-top">
-          <el-avatar :size="68" :src="detail.avatar" />
+          <el-avatar :size="68" :src="avatarOf(detail.avatar, true)" @error="onAvatarError" />
           <div class="info-main">
             <div class="info-name">
               {{ detail.realName }}
@@ -40,7 +40,7 @@
           <div v-for="e in detail.recentEvaluations" :key="e.id" class="eval-item">
             <div class="eval-header flex-between">
               <div class="eval-user">
-                <el-avatar :size="30" :src="e.userAvatar" />
+                <el-avatar :size="30" :src="avatarOf(e.userAvatar)" @error="onAvatarError" />
                 <div>
                   <div class="eval-user-name">{{ e.userName }}</div>
                   <div class="eval-time">{{ e.createTime?.slice(0, 10) }}</div>
@@ -63,7 +63,7 @@
       <template v-if="loadError">
         <el-result icon="error" title="加载失败" sub-title="网络或服务异常，请稍后重试">
           <template #extra>
-            <el-button type="primary" @click="window.location.reload()">
+            <el-button type="primary" @click="reloadPage">
               重新加载
             </el-button>
           </template>
@@ -166,6 +166,7 @@ import NavBar from '@/layouts/NavBar.vue'
 import { getDoctorDetail } from '@/api/doctor'
 import { getPetList } from '@/api/pet'
 import { createConsultation } from '@/api/consultation'
+import { avatarOf, onAvatarError } from '@/utils/avatar-helper'
 import type { DoctorDetail, Pet } from '@/types'
 
 const route = useRoute()
@@ -174,6 +175,10 @@ const router = useRouter()
 const detail = ref<DoctorDetail | null>(null)
 const loadError = ref(false)
 const doctorId = Number(route.params.id)
+
+function reloadPage() {
+  window.location.reload()
+}
 
 onMounted(async () => {
   try {

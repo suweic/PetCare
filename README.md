@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/java-17-orange.svg)](https://adoptium.net/)
-[![Spring Boot](https://img.shields.io/badge/spring--boot-3.2.5-green.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/spring--boot-3.3.7-green.svg)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/vue-3.5-4FC08D.svg)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.6-blue.svg)](https://www.typescriptlang.org/)
 
@@ -59,7 +59,7 @@ PetCare 是一个面向宠物主人的在线医疗问诊平台。用户可在线
                           ▼
               ┌───────────────────────┐
               │   petcare-server      │
-              │   Spring Boot 3.2.5   │
+              │   Spring Boot 3.3.7   │
               │   Java 17 + JWT       │
               │   Port: 8080          │
               └───────────┬───────────┘
@@ -76,9 +76,9 @@ PetCare 是一个面向宠物主人的在线医疗问诊平台。用户可在线
 
 | 层级 | 技术 |
 |------|------|
-| **后端框架** | Spring Boot 3.2.5 |
+| **后端框架** | Spring Boot 3.3.7 |
 | **语言** | Java 17 |
-| **ORM** | MyBatis-Plus 3.5.6 |
+| **ORM** | MyBatis-Plus 3.5.7 |
 | **安全** | Spring Security + JWT + AES-256-GCM |
 | **数据库** | MySQL 8.0（25 张表，外键约束，utf8mb4） |
 | **缓存** | Redis 7（JWT 黑名单、验证码、限流计数） |
@@ -126,7 +126,8 @@ docker compose up -d
 #   后端 API: http://localhost:8080
 ```
 
-首次启动会自动初始化数据库（执行 `init.sql`）。
+首次启动会自动初始化数据库（执行 `init.sql`，仅包含 24 张表的 DDL 结构）。
+如需演示种子数据，请参考 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) 中的说明。
 
 ### 本地开发
 
@@ -200,7 +201,7 @@ petcare/
 │       ├── types/                # TypeScript 类型
 │       ├── utils/                # 工具函数
 │       └── views/                # 页面（Dashboard、审核、管理）
-├── init.sql                      # 数据库初始化脚本（24 张表 + 种子数据）
+├── init.sql                      # 数据库初始化脚本（24 张表 DDL）
 ├── docker-compose.yml            # Docker Compose 编排（MySQL + Redis + Server + Web + Admin）
 ├── .env.example                  # 环境变量模板
 ├── .env                          # 实际环境变量（已 gitignored）
@@ -224,7 +225,7 @@ petcare/
 
 ## 📊 数据库
 
-共 25 张表，核心表：
+共 25 张表（24 张在 init.sql + 1 张 Flyway 迁移 `refresh_token`），核心表：
 
 | 表名 | 说明 |
 |------|------|
@@ -267,8 +268,8 @@ petcare/
 
 当前测试覆盖：
 
-- **后端**：3 个测试类（JwtUtilsTest、DoctorServiceImplTest、UserServiceImplTest）
-- **前端**：待补充
+- **后端**：10 个测试类（JwtUtilsTest、AdminServiceImplTest、DoctorServiceImplTest、UserServiceImplTest、PetServiceImplTest、PrescriptionServiceImplTest、PreConsultationServiceImplTest、ConsultationMessageServiceImplTest、DepartmentServiceImplTest、EvaluationServiceImplTest），约 80+ 测试用例
+- **前端**：8 个测试文件（petcare-web: user.store、pet.store、validation、request、upload、Prescription 组件、auth；petcare-admin: auth）
 
 > 完善测试是项目的优先级工作，欢迎贡献测试用例！
 

@@ -112,8 +112,8 @@ onMounted(() => { fetchDepartments(); fetchList() })
 
 async function fetchDepartments() {
   try {
-    const { default: api } = await import('@/api/department')
-    const { data } = await api.getDepartments()
+    const { getDepartments } = await import('@/api/department')
+    const { data } = await getDepartments()
     if (data.code === 200) {
       departments.value = data.data || []
     }

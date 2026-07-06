@@ -61,6 +61,9 @@ public class AdminServiceImpl implements AdminService {
         // 登录成功，清除失败记录
         loginAttemptService.clearAttempts(loginKey);
 
+        // 检测首次登录（lastLoginTime 为 null → 使用默认密码，需要强制修改）
+        boolean mustChangePassword = admin.getLastLoginTime() == null;
+
         // 更新登录信息
         admin.setLastLoginTime(java.time.LocalDateTime.now());
         adminMapper.updateById(admin);
@@ -77,8 +80,14 @@ public class AdminServiceImpl implements AdminService {
         LoginResultDTO result = new LoginResultDTO();
         result.setToken(token);
         result.setUser(userInfo);
+        result.setMustChangePassword(mustChangePassword);
 
-        log.info("管理员登录成功: adminId={}, username={}", admin.getId(), admin.getUsername());
+        if (mustChangePassword) {
+            log.warn("管理员首次登录（使用默认密码），需强制修改: adminId={}, username={}",
+                    admin.getId(), admin.getUsername());
+        } else {
+            log.info("管理员登录成功: adminId={}, username={}", admin.getId(), admin.getUsername());
+        }
         return result;
     }
 
@@ -95,5 +104,34 @@ public class AdminServiceImpl implements AdminService {
         userInfo.setRealName(admin.getRealName());
         userInfo.setUserType(UserType.ADMIN.getCode());
         return userInfo;
+    }
+
+    @Override
+    public void changePassword(Long adminId, String oldPassword, String newPassword) {
+        // 校验新密码强度（至少8位）
+        if (newPassword == null || newPassword.length() < 8) {
+            throw BusinessException.badRequest("新密码不能少于8位");
+        }
+
+        Admin admin = adminMapper.selectById(adminId);
+        if (admin == null) {
+            throw BusinessException.notFound("管理员不存在");
+        }
+
+        // 验证旧密码
+        if (!passwordEncoder.matches(oldPassword, admin.getPassword())) {
+            throw BusinessException.badRequest("旧密码不正确");
+        }
+
+        // 不允许新旧密码相同
+        if (passwordEncoder.matches(newPassword, admin.getPassword())) {
+            throw BusinessException.badRequest("新密码不能与旧密码相同");
+        }
+
+        // 更新密码
+        admin.setPassword(passwordEncoder.encode(newPassword));
+        adminMapper.updateById(admin);
+
+        log.info("管理员密码修改成功: adminId={}, username={}", adminId, admin.getUsername());
     }
 }

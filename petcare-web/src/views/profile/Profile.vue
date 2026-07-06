@@ -3,7 +3,7 @@
     <div class="profile-page">
       <!-- 用户信息卡片 -->
       <div class="profile-header">
-        <el-avatar :size="64" :src="userStore.userInfo?.avatar" />
+        <el-avatar :size="64" :src="avatarOf(userStore.userInfo?.avatar)" @error="onAvatarError" />
         <div class="profile-name">{{ userStore.userInfo?.nickname || '宠主' }}</div>
         <div class="profile-phone">{{ maskedPhone }}</div>
       </div>
@@ -12,7 +12,7 @@
       <div class="menu-section">
         <div class="menu-item" @click="$router.push('/pet/list')">
           <div class="menu-left">
-            <el-icon color="#ff9800"><PawPrint /></el-icon>
+            <el-icon color="#ff9800"><Stamp /></el-icon>
             <span>我的宠物</span>
           </div>
           <el-icon><ArrowRight /></el-icon>
@@ -24,7 +24,7 @@
           </div>
           <el-icon><ArrowRight /></el-icon>
         </div>
-        <div class="menu-item" @click="$router.push('/profile')">
+        <div class="menu-item" @click="$router.push('/settings')">
           <div class="menu-left">
             <el-icon color="#2196f3"><Setting /></el-icon>
             <span>账号设置</span>
@@ -63,9 +63,10 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { ArrowRight, PawPrint, ChatDotRound, Setting, InfoFilled } from '@element-plus/icons-vue'
+import { ArrowRight, Stamp, ChatDotRound, Setting, InfoFilled } from '@element-plus/icons-vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useUserStore } from '@/stores/user'
+import { avatarOf, onAvatarError } from '@/utils/avatar-helper'
 
 const router = useRouter()
 const userStore = useUserStore()

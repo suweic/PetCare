@@ -1,0 +1,32 @@
+# Auto-detect text files and normalize to LF on commit
+* text=auto
+
+# Explicit file type rules
+*.java text diff=java
+*.xml text
+*.yml text
+*.yaml text
+*.properties text
+*.sql text
+*.js text
+*.ts text eol=lf
+*.vue text eol=lf
+*.css text
+*.scss text
+*.html text
+*.json text
+*.md text
+*.sh text eol=lf
+*.env text
+Dockerfile text eol=lf
+*.txt text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.war binary
+*.class binary

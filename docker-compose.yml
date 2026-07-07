@@ -72,8 +72,8 @@ services:
   # ===== Spring Boot 后端 =====
   server:
     build:
-      context: .
-      dockerfile: ./petcare-server/Dockerfile
+      context: ./petcare-server
+      dockerfile: Dockerfile
     image: petcare-server:latest
     container_name: petcare-server
     restart: unless-stopped

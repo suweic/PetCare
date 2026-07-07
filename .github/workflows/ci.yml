@@ -174,12 +174,11 @@ jobs:
       - name: Build server image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./petcare-server/Dockerfile
+          context: ./petcare-server
           push: false
           tags: petcare-server:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
 
       - name: Build web image
         uses: docker/build-push-action@v6
@@ -187,8 +186,8 @@ jobs:
           context: ./petcare-web
           push: false
           tags: petcare-web:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
 
       - name: Build admin image
         uses: docker/build-push-action@v6
@@ -196,5 +195,5 @@ jobs:
           context: ./petcare-admin
           push: false
           tags: petcare-admin:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin

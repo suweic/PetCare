@@ -8,14 +8,13 @@ COPY petcare-security/pom.xml petcare-security/
 COPY petcare-system/pom.xml petcare-system/
 
 # 先下载依赖（利用 Docker 缓存层）
-# 使用 dependency:resolve 替代 go-offline，避免静默掩盖依赖错误
-RUN mvn dependency:resolve -pl petcare-system -am -B -q
+RUN mvn dependency:resolve -pl petcare-system -am -B
 
 COPY petcare-common/src petcare-common/src
 COPY petcare-security/src petcare-security/src
 COPY petcare-system/src petcare-system/src
 
-RUN mvn package -pl petcare-system -am -DskipTests -B -q
+RUN mvn package -pl petcare-system -am -DskipTests -B
 
 # ===== Stage 2: 运行镜像 =====
 FROM eclipse-temurin:17-jre-alpine

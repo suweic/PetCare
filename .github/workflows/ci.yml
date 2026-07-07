@@ -177,8 +177,8 @@ jobs:
           context: ./petcare-server
           push: false
           tags: petcare-server:latest
-          cache-from: type=gha,scope=server
-          cache-to: type=gha,mode=max,scope=server
+          # 不使用 GHA 缓存 — 排除缓存污染导致的构建失败
+          no-cache: true
 
       - name: Build web image
         uses: docker/build-push-action@v6
@@ -186,8 +186,7 @@ jobs:
           context: ./petcare-web
           push: false
           tags: petcare-web:latest
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
+          no-cache: true
 
       - name: Build admin image
         uses: docker/build-push-action@v6
@@ -195,5 +194,4 @@ jobs:
           context: ./petcare-admin
           push: false
           tags: petcare-admin:latest
-          cache-from: type=gha,scope=admin
-          cache-to: type=gha,mode=max,scope=admin
+          no-cache: true

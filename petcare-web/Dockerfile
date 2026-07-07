@@ -5,7 +5,7 @@ FROM node:20-alpine AS builder
 ARG NPM_REGISTRY=https://registry.npmjs.org
 
 WORKDIR /app
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --registry=${NPM_REGISTRY}
 
 COPY tsconfig*.json vite.config.ts index.html env.d.ts ./

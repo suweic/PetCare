@@ -170,6 +170,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
 
       - name: Build server image
         uses: docker/build-push-action@v6
@@ -177,8 +179,6 @@ jobs:
           context: ./petcare-server
           push: false
           tags: petcare-server:latest
-          # 不使用 GHA 缓存 — 排除缓存污染导致的构建失败
-          no-cache: true
 
       - name: Build web image
         uses: docker/build-push-action@v6
@@ -186,7 +186,6 @@ jobs:
           context: ./petcare-web
           push: false
           tags: petcare-web:latest
-          no-cache: true
 
       - name: Build admin image
         uses: docker/build-push-action@v6
@@ -194,4 +193,3 @@ jobs:
           context: ./petcare-admin
           push: false
           tags: petcare-admin:latest
-          no-cache: true

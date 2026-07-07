@@ -100,7 +100,7 @@ class PetServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> petService.create(100L, dto));
         assertTrue(ex.getMessage().contains("物种无效"));
-        verify(petMapper, never()).insert(any());
+        verify(petMapper, never()).insert(any(Pet.class));
     }
 
     @Test
@@ -113,7 +113,7 @@ class PetServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> petService.create(100L, dto));
         assertTrue(ex.getMessage().contains("性别无效"));
-        verify(petMapper, never()).insert(any());
+        verify(petMapper, never()).insert(any(Pet.class));
     }
 
     // ===================== List Tests =====================

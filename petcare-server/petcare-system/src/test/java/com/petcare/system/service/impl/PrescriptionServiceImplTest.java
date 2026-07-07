@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
 
@@ -97,7 +98,7 @@ class PrescriptionServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> prescriptionService.createPrescription(dto, 10L));
         assertEquals("问诊记录不存在", ex.getMessage());
-        verify(prescriptionMapper, never()).insert(any());
+        verify(prescriptionMapper, never()).insert(any(Prescription.class));
     }
 
     @Test
@@ -110,7 +111,7 @@ class PrescriptionServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> prescriptionService.createPrescription(dto, 10L));
         assertEquals("无权为该问诊开具处方", ex.getMessage());
-        verify(prescriptionMapper, never()).insert(any());
+        verify(prescriptionMapper, never()).insert(any(Prescription.class));
     }
 
     @Test
@@ -123,7 +124,7 @@ class PrescriptionServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> prescriptionService.createPrescription(dto, 10L));
         assertEquals("当前问诊状态不允许开具处方", ex.getMessage());
-        verify(prescriptionMapper, never()).insert(any());
+        verify(prescriptionMapper, never()).insert(any(Prescription.class));
     }
 
     @Test
@@ -138,7 +139,7 @@ class PrescriptionServiceImplTest {
                 () -> prescriptionService.createPrescription(dto, 10L));
         assertEquals("该问诊已开具处方，不可重复开具", ex.getMessage());
         verify(prescriptionMapper, times(1)).insert(any(Prescription.class));
-        verify(prescriptionItemMapper, never()).insert(any());
+        verify(prescriptionItemMapper, never()).insert(any(PrescriptionItem.class));
     }
 
     @Test
@@ -157,13 +158,13 @@ class PrescriptionServiceImplTest {
         doctor.setId(10L);
         doctor.setConsultationCount(3);
         when(doctorMapper.selectById(10L)).thenReturn(doctor);
-        when(doctorMapper.updateById(argThat(d -> d.getConsultationCount() != null && d.getConsultationCount() == 4)))
+        when(doctorMapper.updateById(Mockito.<Doctor>argThat(d -> d.getConsultationCount() != null && d.getConsultationCount() == 4)))
                 .thenReturn(1);
 
         PrescriptionCreateDTO dto = createPrescriptionCreateDTO(1L);
         prescriptionService.createPrescription(dto, 10L);
 
-        verify(doctorMapper).updateById(argThat(d -> d.getConsultationCount() == 4));
+        verify(doctorMapper).updateById(Mockito.<Doctor>argThat(d -> d.getConsultationCount() == 4));
     }
 
     @Test
@@ -187,7 +188,7 @@ class PrescriptionServiceImplTest {
         PrescriptionCreateDTO dto = createPrescriptionCreateDTO(1L);
         prescriptionService.createPrescription(dto, 10L);
 
-        verify(doctorMapper).updateById(argThat(d -> d.getConsultationCount() == 1));
+        verify(doctorMapper).updateById(Mockito.<Doctor>argThat(d -> d.getConsultationCount() == 1));
     }
 
     @Test

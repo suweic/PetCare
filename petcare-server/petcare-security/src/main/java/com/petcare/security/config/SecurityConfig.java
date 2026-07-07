@@ -16,10 +16,14 @@
 
 package com.petcare.security.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petcare.common.Result;
 import com.petcare.security.filter.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -37,6 +41,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -51,7 +56,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain userSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/api/user/**", "/api/doctor/**", "/api/consultation/**", "/api/order/**", "/api/pet/**", "/api/department/**", "/api/upload/**", "/api/prescription/**", "/api/evaluation/**", "/api/pre-consultation/**")
+                .securityMatcher("/api/user/**", "/api/doctor/**", "/api/consultation/**", "/api/order/**", "/api/pet/**", "/api/department/**", "/api/upload/**", "/api/prescription/**", "/api/evaluation/**", "/api/pre-consultation/**", "/ws/**")
                 // CSRF 已禁用：本系统使用 JWT Bearer Token 进行认证（通过 Authorization header 传递），
                 // 不依赖浏览器 Cookie 存储会话，因此不存在 CSRF 攻击面。
                 .csrf(AbstractHttpConfigurer::disable)
@@ -65,7 +70,8 @@ public class SecurityConfig {
                                 "/api/doctor/register",
                                 "/api/doctor/login",
                                 "/api/doctor/list",
-                                "/api/department/list"
+                                "/api/department/list",
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -85,6 +91,21 @@ public class SecurityConfig {
                                 + "connect-src 'self'; "
                                 + "frame-ancestors 'none'"
                         ))
+                )
+                // 自定义异常处理 — 认证失败 / 权限不足返回 Result JSON（非 HTML）
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding("UTF-8");
+                            objectMapper.writeValue(response.getWriter(), Result.error(401, "请先登录"));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding("UTF-8");
+                            objectMapper.writeValue(response.getWriter(), Result.error(403, "权限不足"));
+                        })
                 );
 
         return http.build();
@@ -116,6 +137,21 @@ public class SecurityConfig {
                                 + "connect-src 'self'; "
                                 + "frame-ancestors 'none'"
                         ))
+                )
+                // 自定义异常处理 — 认证失败 / 权限不足返回 Result JSON（非 HTML）
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding("UTF-8");
+                            objectMapper.writeValue(response.getWriter(), Result.error(401, "请先登录"));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding("UTF-8");
+                            objectMapper.writeValue(response.getWriter(), Result.error(403, "权限不足"));
+                        })
                 );
 
         return http.build();

@@ -14,11 +14,11 @@ spring:
     name: petcare-system
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  http:
-    encoding:
-      charset: UTF-8
-      enabled: true
-      force: true
+  # 文件上传大小限制（与 FileUploadController 中 MAX_FILE_SIZE 保持一致）
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   # Flyway 数据库迁移
   # 初次启动时自动执行 db/migration/ 下的 SQL 脚本
   # 注意：Flyway 负责 DDL 版本管理，Docker init.sql 负责首次建库（二选一即可）

@@ -9,15 +9,27 @@ const TOKEN_KEY = 'admin_token'
 const USER_KEY = 'admin_user'
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  try {
+    localStorage.setItem(TOKEN_KEY, token)
+  } catch {
+    console.warn('localStorage 不可用，token 未持久化')
+  }
 }
 
 export function removeToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // noop
+  }
 }
 
 export function getAdmin(): any | null {
@@ -31,11 +43,19 @@ export function getAdmin(): any | null {
 }
 
 export function setAdmin(admin: any): void {
-  localStorage.setItem(USER_KEY, JSON.stringify(admin))
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(admin))
+  } catch {
+    console.warn('localStorage 不可用，用户信息未持久化')
+  }
 }
 
 export function removeAdmin(): void {
-  localStorage.removeItem(USER_KEY)
+  try {
+    localStorage.removeItem(USER_KEY)
+  } catch {
+    // noop
+  }
 }
 
 export function clearAuth(): void {

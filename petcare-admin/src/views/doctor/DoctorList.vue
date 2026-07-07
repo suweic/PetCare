@@ -138,6 +138,8 @@ async function fetchList() {
       list.value = data.data.records
       total.value = data.data.total
     }
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }

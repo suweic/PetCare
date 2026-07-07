@@ -1,6 +1,7 @@
 package com.petcare.system.service.impl;
 
 import com.petcare.common.BusinessException;
+import com.petcare.system.service.SmsService;
 import com.petcare.system.service.VerificationCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
     private static final int MAX_CODE_ATTEMPTS = 5;
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final SmsService smsService;
 
     @Override
     public String sendCode(String phone) {
@@ -69,7 +71,15 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
         stringRedisTemplate.opsForValue().set(limitKey, "1", LIMIT_SECONDS, TimeUnit.SECONDS);
 
         log.info("验证码已发送: phone={}, ip={}", maskPhone(phone), clientIp);
-        // TODO: 生产环境对接真实短信服务（阿里云/腾讯云短信SDK）
+
+        // 实际发送短信（开发环境输出到控制台，生产环境对接阿里云/腾讯云SDK）
+        try {
+            smsService.sendVerificationCode(phone, code);
+        } catch (Exception e) {
+            log.error("短信发送失败: phone={}", maskPhone(phone), e);
+            // 非致命错误：验证码已存入Redis，用户可重试或管理员可通过日志获取
+        }
+
         return code;
     }
 

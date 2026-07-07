@@ -105,7 +105,6 @@
               <span class="log-msg">{{ log.msg }}</span>
               <span class="log-time">{{ log.time }}</span>
             </div>
-            <el-empty v-if="!recentLogs.length" :image-size="48" description="暂无日志" />
           </div>
         </div>
       </el-col>
@@ -132,7 +131,14 @@ const displayDoctors = ref(0)
 const displayConsultations = ref(0)
 const displayRevenue = ref(0)
 
+// 追踪活跃的动画计时器，防止快速刷新时重叠
+const activeTimers = new Map<string, ReturnType<typeof setInterval>>()
+
 function animateValue(key: 'users' | 'doctors' | 'consultations' | 'revenue', target: number) {
+  // 取消该 key 已有动画
+  const existing = activeTimers.get(key)
+  if (existing) clearInterval(existing)
+
   const map = {
     users: { ref: displayUsers, get: () => displayUsers.value, set: (v: number) => { displayUsers.value = v } },
     doctors: { ref: displayDoctors, get: () => displayDoctors.value, set: (v: number) => { displayDoctors.value = v } },
@@ -153,8 +159,10 @@ function animateValue(key: 'users' | 'doctors' | 'consultations' | 'revenue', ta
     if (step >= steps) {
       entry.set(target)
       clearInterval(timer)
+      activeTimers.delete(key)
     }
   }, duration / steps)
+  activeTimers.set(key, timer)
 }
 
 // ----- 图表 -----
@@ -201,10 +209,10 @@ async function loadStats() {
     const { data } = await getDashboardStats()
     if (data.code === 200 && data.data) {
       Object.assign(stats, data.data)
-      animateValue('users', stats.totalUsers!)
-      animateValue('doctors', stats.totalDoctors!)
-      animateValue('consultations', stats.totalConsultations!)
-      animateValue('revenue', (stats.revenue || 0)!)
+      animateValue('users', stats.totalUsers ?? 0)
+      animateValue('doctors', stats.totalDoctors ?? 0)
+      animateValue('consultations', stats.totalConsultations ?? 0)
+      animateValue('revenue', stats.revenue ?? 0)
       refreshCharts()
     } else {
       ElMessage.warning('获取统计数据失败')

@@ -62,6 +62,8 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.replace(redirect)
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }

@@ -15,4 +15,20 @@ public interface ConsultationMessageService {
      * @return 消息分页
      */
     Page<ConsultationMessageDTO> getMessages(Long consultationId, Long userId, int page, int size);
+
+    /**
+     * 保存 WebSocket 实时消息并返回 DTO，供广播使用。
+     *
+     * @param consultationId 问诊ID
+     * @param senderId       发送者ID
+     * @param senderType     发送者类型（1-用户 2-医生）
+     * @param messageType    消息类型（1-文本 2-图片 3-语音 4-视频）
+     * @param content        文本内容
+     * @param mediaUrl       媒体URL（可选）
+     * @param duration       媒体时长（可选）
+     * @return 保存后的消息 DTO
+     */
+    ConsultationMessageDTO saveMessage(Long consultationId, Long senderId, Integer senderType,
+                                       Integer messageType, String content,
+                                       String mediaUrl, Integer duration);
 }

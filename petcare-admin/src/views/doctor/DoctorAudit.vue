@@ -60,7 +60,7 @@
           <el-descriptions-item label="经验">{{ currentDoctor.experience }}年</el-descriptions-item>
         </el-descriptions>
       </div>
-      <el-form label-position="top" class="mt-16">
+      <el-form label-position="top" class="audit-form-mt">
         <el-form-item :label="auditAction === 1 ? '审核意见（选填）' : '拒绝原因'">
           <el-input
             v-model="auditComment"
@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getPendingDoctors, auditDoctor, getDoctorList } from '@/api/doctor'
+import { getPendingDoctors, auditDoctor } from '@/api/doctor'
 import type { Doctor } from '@/types'
 
 const list = ref<Doctor[]>([])
@@ -150,6 +150,8 @@ async function fetchList() {
       list.value = data.data.records
       total.value = data.data.total
     }
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }
@@ -178,6 +180,8 @@ async function submitAudit() {
     ElMessage.success(auditAction.value === 1 ? '审核通过' : '已拒绝')
     auditDialog.value = false
     fetchList()
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     submitting.value = false
   }
@@ -186,7 +190,7 @@ async function submitAudit() {
 
 <style scoped>
 .audit-badge { margin-left: 8px; }
-.mt-16 { margin-top: 8px; }
+.audit-form-mt { margin-top: 16px; }
 .pagination-wrap { display: flex; justify-content: flex-end; padding-top: 16px; }
 .audit-info { max-height: 200px; overflow-y: auto; }
 </style>

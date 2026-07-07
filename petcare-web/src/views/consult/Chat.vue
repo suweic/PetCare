@@ -243,7 +243,7 @@ async function sendText() {
   inputText.value = ''
 
   try {
-    sendWsMessage('/app/chat', {
+    sendWsMessage('/app/chat.send', {
       consultationId: consultationId.value,
       senderType: 1,
       senderId: userStore.userInfo?.id || 0,
@@ -269,6 +269,7 @@ function handleImagePicked(e: Event) {
   // 本地预览
   const reader = new FileReader()
   reader.onload = () => { previewUrl.value = reader.result as string }
+  reader.onerror = () => { ElMessage.warning('图片读取失败，请重试') }
   reader.readAsDataURL(file)
 
   uploadAndSendImage(file)
@@ -279,7 +280,7 @@ async function uploadAndSendImage(file: File) {
   try {
     const { data } = await uploadChatImage(file)
     if (data.code === 200 && wsConnected.value) {
-      sendWsMessage('/app/chat', {
+      sendWsMessage('/app/chat.send', {
         consultationId: consultationId.value,
         senderType: 1,
         senderId: userStore.userInfo?.id || 0,

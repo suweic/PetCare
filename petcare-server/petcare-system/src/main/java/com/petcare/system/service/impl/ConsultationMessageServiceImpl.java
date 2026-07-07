@@ -59,6 +59,44 @@ public class ConsultationMessageServiceImpl implements ConsultationMessageServic
         return result;
     }
 
+    @Override
+    public ConsultationMessageDTO saveMessage(Long consultationId, Long senderId, Integer senderType,
+                                              Integer messageType, String content,
+                                              String mediaUrl, Integer duration) {
+        // 1. 验证问诊存在
+        Consultation consultation = consultationMapper.selectById(consultationId);
+        if (consultation == null) {
+            throw BusinessException.notFound("问诊记录不存在");
+        }
+
+        // 2. 构造实体
+        ConsultationMessage message = new ConsultationMessage();
+        message.setConsultationId(consultationId);
+        message.setSenderType(senderType);
+        message.setSenderId(senderId);
+
+        // 根据发送者类型填充 userId 或 doctorId
+        if (senderType == 1) {
+            message.setUserId(senderId);
+        } else if (senderType == 2) {
+            message.setDoctorId(senderId);
+        }
+
+        message.setMessageType(messageType);
+        message.setContent(content);
+        message.setMediaUrl(mediaUrl);
+        message.setDuration(duration);
+        message.setIsRead(0);  // 默认未读
+
+        // 3. 入库
+        messageMapper.insert(message);
+
+        log.info("问诊消息已保存: messageId={}, consultationId={}, senderId={}, senderType={}",
+                message.getId(), consultationId, senderId, senderType);
+
+        return toDTO(message);
+    }
+
     private ConsultationMessageDTO toDTO(ConsultationMessage m) {
         ConsultationMessageDTO dto = new ConsultationMessageDTO();
         dto.setId(m.getId());

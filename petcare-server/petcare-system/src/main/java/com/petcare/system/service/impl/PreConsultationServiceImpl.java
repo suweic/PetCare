@@ -19,21 +19,13 @@ import com.petcare.system.mapper.UserMapper;
 import com.petcare.system.service.PreConsultationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -45,28 +37,14 @@ public class PreConsultationServiceImpl implements PreConsultationService {
     private final UserMapper userMapper;
     private final PreConsultationMapper preConsultationMapper;
     private final ObjectMapper objectMapper;
-
-    @Value("${llm.api.url:}")
-    private String llmApiUrl;
-
-    @Value("${llm.api.key:}")
-    private String llmApiKey;
-
-    @Value("${llm.api.model:gpt-4o-mini}")
-    private String llmModel;
+    private final LlmApiClient llmApiClient;
 
     private static final String SPECIES_NAMES = "1-猫, 2-狗, 3-其他";
 
     @Override
     @Transactional
     public PreConsultationResultDTO analyze(Long userId, PreConsultationRequestDTO dto) {
-        // 1. 校验LLM配置
-        if (llmApiUrl == null || llmApiUrl.isBlank()) {
-            throw BusinessException.badRequest("AI预问诊服务未配置，请联系管理员设置LLM_API_URL");
-        }
-        if (llmApiKey == null || llmApiKey.isBlank()) {
-            throw BusinessException.badRequest("AI预问诊服务未配置，请联系管理员设置LLM_API_KEY");
-        }
+        // 1. 校验LLM配置（已移至 LlmApiClient，此处保留冗余校验作为快速失败）
 
         // 2. 查询科室和医生数据作为LLM上下文
         List<Department> departments = departmentMapper.selectList(
@@ -88,10 +66,10 @@ public class PreConsultationServiceImpl implements PreConsultationService {
         // 4. 构建LLM提示词
         String prompt = buildPrompt(dto, departments, doctors, doctorNameMap);
 
-        // 5. 调用LLM API
+        // 5. 调用LLM API（通过独立 Service 触发 @Retryable + RestClientCustomizer 超时）
         String llmResponse;
         try {
-            llmResponse = callLLM(prompt);
+            llmResponse = llmApiClient.call(prompt);
         } catch (Exception e) {
             log.error("LLM API调用失败", e);
             throw BusinessException.badRequest("AI分析服务暂时不可用，请稍后重试");
@@ -125,6 +103,7 @@ public class PreConsultationServiceImpl implements PreConsultationService {
         record.setRecommendedDepartmentId(result.getDepartmentId());
         record.setRecommendedDepartmentName(result.getDepartmentName());
         record.setGeneralAdvice(result.getGeneralAdvice());
+        String llmModel = llmApiClient.getLlmModel();
         record.setLlmModel(llmModel);
         try {
             record.setRecommendedDoctors(objectMapper.writeValueAsString(result.getRecommendedDoctors()));
@@ -259,64 +238,6 @@ public class PreConsultationServiceImpl implements PreConsultationService {
         sb.append("6. 只返回JSON，不要包含```json```标记或任何其他文字");
 
         return sb.toString();
-    }
-
-    /**
-     * 调用LLM API（OpenAI兼容接口）。
-     * <p>
-     * 使用 Spring Retry 实现自动重试（最多2次），配合 RestClientConfig 的超时配置。
-     * 超时/网络异常自动重试；4xx 客户端错误不重试（参数错误重试无意义）。
-     *
-     * @throws RuntimeException 所有重试耗尽后抛出
-     */
-    @Retryable(
-            retryFor = {ResourceAccessException.class, RuntimeException.class},
-            noRetryFor = {BusinessException.class},
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 1000, multiplier = 2.0, maxDelay = 8000),
-            label = "llm-api-call"
-    )
-    String callLLM(String prompt) {
-        RestClient restClient = RestClient.builder()
-                .baseUrl(llmApiUrl)
-                .defaultHeader("Authorization", "Bearer " + llmApiKey)
-                .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                .build();
-
-        Map<String, Object> requestBody = Map.of(
-                "model", llmModel,
-                "messages", List.of(
-                        Map.of("role", "system", "content", "你是一位专业的宠物医疗分诊助手。你只返回JSON，不返回其他内容。"),
-                        Map.of("role", "user", "content", prompt)
-                ),
-                "temperature", 0.3,
-                "max_tokens", 1000
-        );
-
-        log.info("调用LLM API: model={}, url={}", llmModel, llmApiUrl);
-        String response = restClient.post()
-                .body(requestBody)
-                .retrieve()
-                .onStatus(status -> status.value() >= 500, (req, resp) -> {
-                    throw new RuntimeException("LLM API 服务器错误: HTTP " + resp.getStatusCode());
-                })
-                .onStatus(status -> status.value() == 429, (req, resp) -> {
-                    throw new RuntimeException("LLM API 限流 (429)，将自动重试");
-                })
-                .body(String.class);
-
-        log.debug("LLM原始响应: {}", response);
-        return response;
-    }
-
-    /**
-     * 重试耗尽后的兜底处理。
-     */
-    @Recover
-    private String callLLMFallback(RuntimeException e, String prompt) {
-        log.error("LLM API调用全部重试失败 (maxAttempts=3)", e);
-        throw BusinessException.badRequest(
-                "AI分析服务暂时不可用，请稍后重试。如需紧急帮助请联系客服。");
     }
 
     /**

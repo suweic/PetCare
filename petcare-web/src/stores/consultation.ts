@@ -101,10 +101,8 @@ export const useConsultationStore = defineStore('consultation', () => {
   }
 
   // ---------- WebSocket ----------
-  let wsMessageListener: ((msg: any) => void) | null = null
 
   function connectChat(consultationId: number, onMessage: (msg: any) => void) {
-    wsMessageListener = onMessage
     connectWs(consultationId, (msg) => {
       messages.value.push(msg as any)
       onMessage(msg)
@@ -112,12 +110,11 @@ export const useConsultationStore = defineStore('consultation', () => {
   }
 
   function sendMessage(body: { consultationId: number; senderType: number; senderId: number; messageType: number; content: string }) {
-    sendWsMessage('/app/chat', body)
+    sendWsMessage('/app/chat.send', body)
   }
 
   function disconnectChat() {
     disconnectWs()
-    wsMessageListener = null
   }
 
   function resetCurrent() {

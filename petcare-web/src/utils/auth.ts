@@ -24,15 +24,27 @@ const TOKEN_KEY = 'petcare_token'
 const USER_KEY = 'petcare_user'
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  try {
+    localStorage.setItem(TOKEN_KEY, token)
+  } catch {
+    console.warn('localStorage 不可用，token 未持久化')
+  }
 }
 
 export function removeToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // noop
+  }
 }
 
 export function getUser(): any | null {
@@ -46,11 +58,19 @@ export function getUser(): any | null {
 }
 
 export function setUser(user: any): void {
-  localStorage.setItem(USER_KEY, JSON.stringify(user))
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+  } catch {
+    console.warn('localStorage 不可用，用户信息未持久化')
+  }
 }
 
 export function removeUser(): void {
-  localStorage.removeItem(USER_KEY)
+  try {
+    localStorage.removeItem(USER_KEY)
+  } catch {
+    // noop
+  }
 }
 
 export function clearAuth(): void {

@@ -176,9 +176,12 @@ const maskedPhone = computed(() => {
 })
 
 // ----- 偏好 -----
-const darkMode = ref(localStorage.getItem('pc:darkMode') === '1')
-const notifEnabled = ref(localStorage.getItem('pc:notif') !== '0')
-const langValue = ref(localStorage.getItem('pc:lang') || 'zh-CN')
+function safeGetItem(key: string, fallback: string): string {
+  try { return localStorage.getItem(key) ?? fallback } catch { return fallback }
+}
+const darkMode = ref(safeGetItem('pc:darkMode', '0') === '1')
+const notifEnabled = ref(safeGetItem('pc:notif', '1') !== '0')
+const langValue = ref(safeGetItem('pc:lang', 'zh-CN'))
 const cacheSize = ref('0 KB')
 
 const langs = [
@@ -205,9 +208,13 @@ onMounted(() => {
   if (darkMode.value) document.documentElement.classList.add('pc-dark')
   // 计算缓存大小
   let total = 0
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i)
-    if (k) total += (k.length + (localStorage.getItem(k) || '').length) * 2
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k) total += (k.length + (localStorage.getItem(k) || '').length) * 2
+    }
+  } catch {
+    total = 0
   }
   cacheSize.value = total < 1024 ? `${total} B` : `${(total / 1024).toFixed(1)} KB`
 })
@@ -222,18 +229,14 @@ async function clearCache() {
     )
   } catch { return }
   // 保留 token / userInfo / 偏好
-  const keep = ['pc:darkMode', 'pc:notif', 'pc:lang']
+  const keep = ['pc:darkMode', 'pc:notif', 'pc:lang', 'petcare_token', 'petcare_user']
   const saved: Record<string, string> = {}
   keep.forEach((k) => {
     const v = localStorage.getItem(k)
     if (v != null) saved[k] = v
   })
-  const token = localStorage.getItem('pc:token')
-  const user  = localStorage.getItem('pc:user')
   localStorage.clear()
   Object.entries(saved).forEach(([k, v]) => localStorage.setItem(k, v))
-  if (token) localStorage.setItem('pc:token', token)
-  if (user)  localStorage.setItem('pc:user', user)
   ElMessage.success('缓存已清理')
   cacheSize.value = '0 B'
 }
@@ -270,6 +273,7 @@ function onFileChange(e: Event) {
   pendingFile.value = f
   const reader = new FileReader()
   reader.onload = () => { previewAvatar.value = String(reader.result || '') }
+  reader.onerror = () => { ElMessage.warning('图片读取失败，请重试') }
   reader.readAsDataURL(f)
 }
 

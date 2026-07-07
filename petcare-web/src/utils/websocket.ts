@@ -41,7 +41,7 @@ export function connectWs(
   wsReconnecting.value = false
 
   client = new Client({
-    webSocketFactory: () => new SockJS('/ws/chat'),
+    webSocketFactory: () => new SockJS(`${import.meta.env.VITE_WS_URL || '/ws'}?token=${getToken() || ''}`),
     connectHeaders: {
       Authorization: `Bearer ${getToken() || ''}`,
     },

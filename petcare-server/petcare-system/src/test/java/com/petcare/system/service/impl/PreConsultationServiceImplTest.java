@@ -22,7 +22,6 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -35,8 +34,8 @@ import static org.mockito.Mockito.*;
 
 /**
  * PreConsultationServiceImpl 单元测试。
- * 覆盖 analyze 方法的各分支：配置校验、科室校验、LLM调用失败、响应解析、记录保存。
- * 使用 ReflectionTestUtils 注入 @Value 字段，Spy 控制 LLM 调用行为。
+ * 覆盖 analyze 方法的各分支：科室校验、LLM调用失败、响应解析、记录保存。
+ * LLM 配置校验已移至 {@link LlmApiClient}，此处不再重复测试。
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -50,6 +49,8 @@ class PreConsultationServiceImplTest {
     private UserMapper userMapper;
     @Mock
     private PreConsultationMapper preConsultationMapper;
+    @Mock
+    private LlmApiClient llmApiClient;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -60,29 +61,7 @@ class PreConsultationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(service, "llmApiUrl", "https://api.openai.com/v1/chat/completions");
-        ReflectionTestUtils.setField(service, "llmApiKey", "sk-test-key");
-        ReflectionTestUtils.setField(service, "llmModel", "gpt-4o-mini");
-    }
-
-    // ==================== LLM 配置校验 ====================
-
-    @Test
-    void shouldThrowExceptionWhenLlmUrlNotConfigured() {
-        ReflectionTestUtils.setField(service, "llmApiUrl", "");
-
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.analyze(1L, createRequest("腹泻")));
-        assertTrue(ex.getMessage().contains("LLM_API_URL"));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenLlmKeyNotConfigured() {
-        ReflectionTestUtils.setField(service, "llmApiKey", "");
-
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.analyze(1L, createRequest("腹泻")));
-        assertTrue(ex.getMessage().contains("LLM_API_KEY"));
+        // LLM 配置已移至 LlmApiClient，测试中通过 mock 控制其行为
     }
 
     // ==================== 科室校验 ====================
@@ -99,15 +78,14 @@ class PreConsultationServiceImplTest {
     // ==================== LLM 调用失败处理 ====================
 
     @Test
-    void shouldThrowExceptionWhenLlmCallFails() throws Exception {
+    void shouldThrowExceptionWhenLlmCallFails() {
         Department dept = createDepartment(1L, "内科");
         when(departmentMapper.selectList(any())).thenReturn(List.of(dept));
         when(doctorMapper.selectList(any())).thenReturn(Collections.emptyList());
         when(userMapper.selectBatchIds(anyList())).thenReturn(Collections.emptyList());
 
-        // 使用 spy 模拟 callLLM 抛出异常
-        doThrow(new RuntimeException("Connection refused"))
-                .when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString()))
+                .thenThrow(new RuntimeException("Connection refused"));
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.analyze(1L, createRequest("腹泻")));
@@ -117,15 +95,14 @@ class PreConsultationServiceImplTest {
     // ==================== LLM 响应解析失败 ====================
 
     @Test
-    void shouldThrowExceptionWhenLlmResponseIsInvalidJson() throws Exception {
+    void shouldThrowExceptionWhenLlmResponseIsInvalidJson() {
         Department dept = createDepartment(1L, "内科");
         when(departmentMapper.selectList(any())).thenReturn(List.of(dept));
         when(doctorMapper.selectList(any())).thenReturn(Collections.emptyList());
         when(userMapper.selectBatchIds(anyList())).thenReturn(Collections.emptyList());
 
-        // 返回非JSON内容
-        doReturn("This is not JSON at all")
-                .when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString()))
+                .thenReturn("This is not JSON at all");
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.analyze(1L, createRequest("腹泻")));
@@ -147,12 +124,14 @@ class PreConsultationServiceImplTest {
         doctorUser.setRealName("李医生");
         when(userMapper.selectBatchIds(List.of(100L))).thenReturn(List.of(doctorUser));
 
+        when(llmApiClient.getLlmModel()).thenReturn("gpt-4o-mini");
+
         // 模拟 LLM 返回 OpenAI 格式的 JSON
         String llmResponse = buildMockOpenAiResponse(
                 "{\"departmentId\":1,\"departmentName\":\"内科\",\"aiAnalysis\":\"症状分析内容\","
                         + "\"recommendedDoctors\":[{\"doctorId\":10,\"doctorName\":\"李医生\",\"matchReason\":\"专长匹配\"}],"
                         + "\"generalAdvice\":\"保持饮食清淡\"}");
-        doReturn(llmResponse).when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString())).thenReturn(llmResponse);
 
         when(preConsultationMapper.insert(any(PreConsultation.class)))
                 .thenAnswer(inv -> { inv.getArgument(0, PreConsultation.class).setId(1L); return 1; });
@@ -184,7 +163,7 @@ class PreConsultationServiceImplTest {
         String rawJson = "{\"departmentId\":1,\"departmentName\":\"内科\",\"aiAnalysis\":\"分析内容\","
                 + "\"recommendedDoctors\":[],\"generalAdvice\":\"护理建议\"}";
         String llmResponse = buildMockOpenAiResponse("```json\n" + rawJson + "\n```");
-        doReturn(llmResponse).when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString())).thenReturn(llmResponse);
 
         when(preConsultationMapper.insert(any(PreConsultation.class)))
                 .thenAnswer(inv -> { inv.getArgument(0, PreConsultation.class).setId(2L); return 1; });
@@ -206,7 +185,7 @@ class PreConsultationServiceImplTest {
         // 直接返回 JSON 内容（非 OpenAI 格式）
         String rawJson = "{\"departmentId\":2,\"departmentName\":\"外科\",\"aiAnalysis\":\"需要手术\","
                 + "\"recommendedDoctors\":[],\"generalAdvice\":null}";
-        doReturn(rawJson).when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString())).thenReturn(rawJson);
 
         when(preConsultationMapper.insert(any(PreConsultation.class)))
                 .thenAnswer(inv -> { inv.getArgument(0, PreConsultation.class).setId(3L); return 1; });
@@ -239,7 +218,7 @@ class PreConsultationServiceImplTest {
                 "{\"departmentId\":1,\"departmentName\":\"内科\",\"aiAnalysis\":\"消化问题\","
                         + "\"recommendedDoctors\":[{\"doctorId\":20,\"doctorName\":\"王医生\",\"matchReason\":\"消化系统专家\"}],"
                         + "\"generalAdvice\":\"少量多餐\"}");
-        doReturn(llmResponse).when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString())).thenReturn(llmResponse);
 
         when(preConsultationMapper.insert(any(PreConsultation.class)))
                 .thenAnswer(inv -> { inv.getArgument(0, PreConsultation.class).setId(4L); return 1; });
@@ -273,7 +252,7 @@ class PreConsultationServiceImplTest {
                 "{\"departmentId\":1,\"departmentName\":\"内科\",\"aiAnalysis\":\"分析\","
                         + "\"recommendedDoctors\":[{\"doctorId\":30,\"doctorName\":\"昵称医生\",\"matchReason\":\"匹配\"}],"
                         + "\"generalAdvice\":\"建议\"}");
-        doReturn(llmResponse).when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString())).thenReturn(llmResponse);
 
         when(preConsultationMapper.insert(any(PreConsultation.class)))
                 .thenAnswer(inv -> { inv.getArgument(0, PreConsultation.class).setId(5L); return 1; });
@@ -294,7 +273,7 @@ class PreConsultationServiceImplTest {
         String llmResponse = buildMockOpenAiResponse(
                 "{\"departmentId\":1,\"departmentName\":\"内科\",\"aiAnalysis\":\"测试\","
                         + "\"recommendedDoctors\":[],\"generalAdvice\":\"建议\"}");
-        doReturn(llmResponse).when(service).callLLM(anyString());
+        when(llmApiClient.call(anyString())).thenReturn(llmResponse);
 
         when(preConsultationMapper.insert(any(PreConsultation.class)))
                 .thenAnswer(inv -> { inv.getArgument(0, PreConsultation.class).setId(10L); return 1; });

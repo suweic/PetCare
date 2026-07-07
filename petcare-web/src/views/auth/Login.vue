@@ -161,6 +161,8 @@ async function handlePwdLogin() {
     await userStore.login(pwdForm.phone, pwdForm.password)
     ElMessage.success('登录成功')
     router.replace((route.query.redirect as string) || '/home')
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }
@@ -172,13 +174,17 @@ async function sendVerificationCode() {
     ElMessage.warning('请输入正确的手机号')
     return
   }
-  await sendCode(phone)
-  ElMessage.success('验证码已发送')
-  countdown.value = 60
-  const timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) clearInterval(timer)
-  }, 1000)
+  try {
+    await sendCode(phone)
+    ElMessage.success('验证码已发送')
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
+  }
 }
 
 async function handleCodeLogin() {
@@ -189,6 +195,8 @@ async function handleCodeLogin() {
     await userStore.loginWithCode(codeForm.phone, codeForm.code)
     ElMessage.success('登录成功')
     router.replace((route.query.redirect as string) || '/home')
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }
@@ -213,8 +221,13 @@ async function sendRegCode() {
     ElMessage.warning('请输入正确的手机号')
     return
   }
-  await sendCode(regForm.phone)
-  ElMessage.success('验证码已发送')
+  try {
+    await sendCode(regForm.phone)
+    ElMessage.success('验证码已发送')
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
+    return
+  }
   regCd.value = 60
   const timer = setInterval(() => {
     regCd.value--
@@ -235,6 +248,8 @@ async function handleRegister() {
     regForm.password = ''
     regForm.code = ''
     regFormRef.value?.resetFields()
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }

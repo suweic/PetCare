@@ -226,6 +226,7 @@ async function handleFileChange(e: Event) {
   reader.onload = () => {
     avatarUrl.value = reader.result as string
   }
+  reader.onerror = () => { ElMessage.warning('图片读取失败，请重试') }
   reader.readAsDataURL(file)
 
   // 上传到服务器
@@ -270,6 +271,8 @@ async function handleSubmit() {
     }
     ElMessage.success(isEdit.value ? '修改成功' : '添加成功')
     router.back()
+  } catch {
+    // 错误已在 request 拦截器中通过 ElMessage 提示
   } finally {
     loading.value = false
   }
